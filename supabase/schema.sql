@@ -55,9 +55,39 @@ create table if not exists public.daily_entries (
   remarks text default '',
   net_sales numeric generated always as (sales - sales_return) stored,
   collection_gap numeric generated always as (sales - collections) stored,
+  edit_count integer not null default 0,
+  last_edited_at timestamptz,
+  last_edited_by uuid references public.profiles(id),
   created_at timestamptz default now(),
   unique (user_id, entry_date)
 );
+
+-- Whenever a daily entry's real data changes (not a no-op re-save of the
+-- same numbers), bump the edit counter and record who did it - whether
+-- that's the sales person themselves or an Admin editing on their behalf.
+create or replace function public.track_daily_entry_edit()
+returns trigger
+language plpgsql
+as $$
+begin
+  if (old.sales is distinct from new.sales)
+     or (old.collections is distinct from new.collections)
+     or (old.sales_return is distinct from new.sales_return)
+     or (old.remarks is distinct from new.remarks) then
+    new.edit_count := old.edit_count + 1;
+    new.last_edited_at := now();
+    new.last_edited_by := auth.uid();
+  else
+    new.edit_count := old.edit_count;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_track_daily_entry_edit on public.daily_entries;
+create trigger trg_track_daily_entry_edit
+  before update on public.daily_entries
+  for each row execute function public.track_daily_entry_edit();
 
 -- ---------------------------------------------------------------------
 -- Helper: is the currently logged-in user an admin?
@@ -149,6 +179,15 @@ create policy "entries: active sales person can insert own entries"
 create policy "entries: active sales person can update own entries"
   on public.daily_entries for update
   using (user_id = auth.uid() and public.is_active_sales_person());
+
+-- An Admin may also edit ANY sales person's daily entries directly
+create policy "entries: admin can insert any entries"
+  on public.daily_entries for insert
+  with check (public.is_admin());
+
+create policy "entries: admin can update any entries"
+  on public.daily_entries for update
+  using (public.is_admin());
 
 -- =====================================================================
 -- MAKE THE FIRST ADMIN

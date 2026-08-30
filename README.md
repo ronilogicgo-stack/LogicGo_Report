@@ -75,15 +75,28 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
-## Upgrading an already-live project (v1 -> v2)
+## Upgrading an already-live project (v1 -> v2 -> v3)
 
-If your app is already deployed and you're pulling this update, do this
-**before** redeploying:
+If your app is already deployed and you're pulling this update, run the
+migration scripts **in order** before redeploying:
 
 1. Go to your Supabase project -> **SQL Editor** -> New query.
-2. Paste the entire contents of `supabase/migration_v2.sql` and Run it.
-   (It only adds new columns/rules - it never touches existing data.)
-3. Push this code to GitHub as normal - Vercel will redeploy automatically.
+2. Run `supabase/migration_v2.sql` (if you haven't already).
+3. Run `supabase/migration_v3.sql`.
+4. Push this code to GitHub as normal - Vercel will redeploy automatically.
+
+### What's new in v3
+- **Per-employee detail page.** From the Admin dashboard, click any
+  sales person's name to open their individual daily report - exactly
+  like the separate tab each employee had in the original spreadsheet.
+  It shows every day they've reported, with the same monthly summary
+  numbers.
+- **Admin can edit any entry.** From that detail page, an Admin can add
+  or correct a sales person's daily entry directly - using the exact
+  same form and calculation rules as the sales person's own dashboard.
+- **Edit tracking.** Any entry that gets changed after it was first
+  saved - by the sales person or by an Admin - turns red and shows
+  "Edited N×", so nothing gets silently altered without a visible trail.
 
 ### What's new in v2
 - **Pause / Resume an employee.** On the Admin dashboard, each sales

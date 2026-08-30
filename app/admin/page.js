@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { summarizeMonth, fmt, monthKey } from "@/lib/calculations";
 
@@ -164,7 +165,14 @@ export default function AdminDashboard() {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.person.id} className="border-t">
-                    <td className="p-3 font-medium">{r.person.full_name}</td>
+                    <td className="p-3 font-medium">
+                      <Link
+                        href={`/admin/employee/${r.person.id}?month=${month}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {r.person.full_name}
+                      </Link>
+                    </td>
                     <td className="p-3">{r.person.location}</td>
 
                     {editingId === r.person.id ? (
@@ -306,7 +314,12 @@ export default function AdminDashboard() {
               <div key={r.person.id} className="bg-white rounded-xl shadow p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold">{r.person.full_name}</p>
+                    <Link
+                      href={`/admin/employee/${r.person.id}?month=${month}`}
+                      className="font-semibold text-blue-600 hover:underline"
+                    >
+                      {r.person.full_name}
+                    </Link>
                     <p className="text-xs text-gray-500">{r.person.location}</p>
                   </div>
                   <StatusBadge status={r.person.status} />

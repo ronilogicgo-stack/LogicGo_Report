@@ -1,15 +1,22 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { summarizeMonth, fmt, monthKey } from "@/lib/calculations";
 import DailyEntryForm from "@/components/DailyEntryForm";
 import DailyEntriesTable from "@/components/DailyEntriesTable";
 
-export default function SalesDashboard() {
+export default function EmployeeDetailPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const supabase = createClient();
-  const [userId, setUserId] = useState(null);
-  const [month, setMonth] = useState(monthKey());
+  const employeeId = params.id;
+
+  const [month, setMonth] = useState(searchParams.get("month") || monthKey());
+  const [person, setPerson] = useState(null);
   const [target, setTarget] = useState(null);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,16 +24,18 @@ export default function SalesDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) return;
-    setUserId(session.user.id);
+
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("id, full_name, location, status, email")
+      .eq("id", employeeId)
+      .single();
+    setPerson(p);
 
     const { data: t } = await supabase
       .from("monthly_targets")
       .select("*")
-      .eq("user_id", session.user.id)
+      .eq("user_id", employeeId)
       .eq("month", month)
       .maybeSingle();
     setTarget(t);
@@ -38,33 +47,54 @@ export default function SalesDashboard() {
     const { data: e } = await supabase
       .from("daily_entries")
       .select("*")
-      .eq("user_id", session.user.id)
+      .eq("user_id", employeeId)
       .gte("entry_date", month)
       .lt("entry_date", monthEnd)
       .order("entry_date", { ascending: false });
     setEntries(e || []);
     setLoading(false);
-  }, [month, supabase]);
+  }, [employeeId, month, supabase]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const summary = summarizeMonth(entries, target);
+  const reportedDays = entries.length;
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-lg sm:text-xl font-bold">My Dashboard</h1>
-        <input
-          type="month"
-          value={month.slice(0, 7)}
-          onChange={(e) => setMonth(`${e.target.value}-01`)}
-          className="border rounded-lg px-3 py-2 w-full sm:w-auto"
-        />
+      <div>
+        <button
+          onClick={() => router.push("/admin")}
+          className="text-sm text-gray-500 hover:text-black mb-2"
+        >
+          ← Back to Dashboard
+        </button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold">
+              {person?.full_name || "Loading..."}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {person?.location} · {person?.email}
+            </p>
+          </div>
+          <input
+            type="month"
+            value={month.slice(0, 7)}
+            onChange={(e) => setMonth(`${e.target.value}-01`)}
+            className="border rounded-lg px-3 py-2 w-full sm:w-auto"
+          />
+        </div>
       </div>
 
-      {/* Monthly summary - same calculation as admin dashboard */}
+      <p className="text-sm text-gray-600">
+        Reported on <span className="font-semibold">{reportedDays}</span> day
+        {reportedDays === 1 ? "" : "s"} this month.
+      </p>
+
+      {/* Monthly summary - identical calculation everywhere in the app */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
         <SummaryCard label="Opening Dues" value={fmt(summary.opening_dues)} />
         <SummaryCard label="Sales Target" value={fmt(summary.sales_target)} />
@@ -84,9 +114,15 @@ export default function SalesDashboard() {
         <SummaryCard label="Closing Dues" value={fmt(summary.closing_dues)} highlight />
       </div>
 
-      {userId && (
+      <p className="text-xs text-gray-400">
+        Editing here writes on behalf of this employee - it uses the exact
+        same form and rules as their own dashboard. Edited entries are
+        tracked and shown in red below.
+      </p>
+
+      {person && (
         <DailyEntryForm
-          userId={userId}
+          userId={employeeId}
           editingEntry={editingEntry}
           onSaved={() => {
             setEditingEntry(null);
@@ -98,7 +134,7 @@ export default function SalesDashboard() {
 
       <div>
         <h2 className="font-semibold mb-2 text-sm text-gray-600">
-          Entry History{" "}
+          Daily Report{" "}
           <span className="font-normal text-gray-400">
             (rows in red have been edited after first saving)
           </span>
