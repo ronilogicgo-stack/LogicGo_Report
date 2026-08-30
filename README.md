@@ -75,6 +75,15 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v9
+- **Daily Report page** (Admin -> "Daily Report") - mirrors your
+  spreadsheet's "Daily Sales & Collection Summary" tab exactly: pick
+  any single date and see every sales person's Sales Achievement,
+  Collections Achievement, Gap, Sales Return, and Net Sales for that
+  day, with a Grand Total row. Anyone who hasn't reported that day
+  still shows up with zeros (greyed out), and any newly approved sales
+  person appears automatically - no manual setup required.
+
 ## Upgrading an already-live project (v1 -> v8)
 
 If your app is already deployed and you're pulling this update, run the

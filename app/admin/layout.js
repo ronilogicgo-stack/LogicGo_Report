@@ -61,6 +61,12 @@ export default function AdminLayout({ children }) {
             Dashboard
           </Link>
           <Link
+            href="/admin/daily-report"
+            className="text-sm text-gray-600 hover:text-black"
+          >
+            Daily Report
+          </Link>
+          <Link
             href="/admin/requests"
             className="text-sm text-gray-600 hover:text-black"
           >
