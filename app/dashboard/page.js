@@ -15,6 +15,15 @@ export default function SalesDashboard() {
   const [loading, setLoading] = useState(true);
   const [editingEntry, setEditingEntry] = useState(null);
 
+  const [editingTargets, setEditingTargets] = useState(false);
+  const [targetForm, setTargetForm] = useState({
+    opening_dues: 0,
+    sales_target: 0,
+    collection_target: 0,
+  });
+  const [savingTargets, setSavingTargets] = useState(false);
+  const [targetError, setTargetError] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     const {
@@ -50,19 +59,112 @@ export default function SalesDashboard() {
     load();
   }, [load]);
 
+  function startEditTargets() {
+    setTargetForm({
+      opening_dues: target?.opening_dues || 0,
+      sales_target: target?.sales_target || 0,
+      collection_target: target?.collection_target || 0,
+    });
+    setTargetError("");
+    setEditingTargets(true);
+  }
+
+  async function saveTargets() {
+    setSavingTargets(true);
+    setTargetError("");
+    const { error } = await supabase.from("monthly_targets").upsert(
+      {
+        user_id: userId,
+        month,
+        opening_dues: Number(targetForm.opening_dues) || 0,
+        sales_target: Number(targetForm.sales_target) || 0,
+        collection_target: Number(targetForm.collection_target) || 0,
+      },
+      { onConflict: "user_id,month" }
+    );
+    if (error) {
+      setTargetError(
+        error.message.includes("row-level security")
+          ? "Your account is paused. Contact your admin to resume access."
+          : error.message
+      );
+    } else {
+      setEditingTargets(false);
+      load();
+    }
+    setSavingTargets(false);
+  }
+
   const summary = summarizeMonth(entries, target);
 
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg sm:text-xl font-bold">My Dashboard</h1>
-        <input
-          type="month"
-          value={month.slice(0, 7)}
-          onChange={(e) => setMonth(`${e.target.value}-01`)}
-          className="border rounded-lg px-3 py-2 w-full sm:w-auto"
-        />
+        <div className="flex items-center gap-3">
+          <input
+            type="month"
+            value={month.slice(0, 7)}
+            onChange={(e) => setMonth(`${e.target.value}-01`)}
+            className="border rounded-lg px-3 py-2 w-full sm:w-auto"
+          />
+          {!editingTargets && (
+            <button
+              onClick={startEditTargets}
+              className="text-sm text-blue-600 underline whitespace-nowrap"
+            >
+              Edit My Targets
+            </button>
+          )}
+        </div>
       </div>
+
+      {editingTargets && (
+        <div className="bg-white rounded-xl shadow p-4 space-y-3">
+          <h2 className="font-semibold text-sm">
+            Set Opening Dues / Sales Target / Collection Target for this month
+          </h2>
+          {targetError && (
+            <div className="text-sm text-red-600 bg-red-50 rounded p-2">
+              {targetError}
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <LabeledNumberInput
+              label="Opening Dues"
+              value={targetForm.opening_dues}
+              onChange={(v) => setTargetForm({ ...targetForm, opening_dues: v })}
+            />
+            <LabeledNumberInput
+              label="Sales Target"
+              value={targetForm.sales_target}
+              onChange={(v) => setTargetForm({ ...targetForm, sales_target: v })}
+            />
+            <LabeledNumberInput
+              label="Collection Target"
+              value={targetForm.collection_target}
+              onChange={(v) =>
+                setTargetForm({ ...targetForm, collection_target: v })
+              }
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              disabled={savingTargets}
+              onClick={saveTargets}
+              className="bg-black text-white rounded-lg px-5 py-2 text-sm disabled:opacity-50"
+            >
+              {savingTargets ? "Saving..." : "Save"}
+            </button>
+            <button
+              onClick={() => setEditingTargets(false)}
+              className="border rounded-lg px-5 py-2 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Monthly summary - same calculation as admin dashboard */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
@@ -122,6 +224,21 @@ function SummaryCard({ label, value, highlight }) {
     >
       <p className={`text-xs ${highlight ? "text-gray-300" : "text-gray-500"}`}>{label}</p>
       <p className="text-base sm:text-lg font-bold mt-1">{value}</p>
+    </div>
+  );
+}
+
+function LabeledNumberInput({ label, value, onChange }) {
+  return (
+    <div>
+      <label className="text-xs text-gray-500">{label}</label>
+      <input
+        type="number"
+        inputMode="decimal"
+        className="w-full border rounded-lg px-3 py-2 mt-0.5"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }

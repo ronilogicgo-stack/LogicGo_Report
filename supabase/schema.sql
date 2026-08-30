@@ -190,6 +190,16 @@ create policy "targets: admin can update targets"
   on public.monthly_targets for update
   using (public.is_admin());
 
+-- An active (non-paused) sales person may also set/edit their OWN
+-- monthly targets directly - not just an Admin.
+create policy "targets: sales person can insert own targets"
+  on public.monthly_targets for insert
+  with check (user_id = auth.uid() and public.is_active_sales_person());
+
+create policy "targets: sales person can update own targets"
+  on public.monthly_targets for update
+  using (user_id = auth.uid() and public.is_active_sales_person());
+
 -- DAILY ENTRIES policies
 create policy "entries: sales person can read own entries"
   on public.daily_entries for select

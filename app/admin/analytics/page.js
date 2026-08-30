@@ -12,9 +12,6 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   Cell,
-  PieChart,
-  Pie,
-  Legend,
 } from "recharts";
 import { createClient } from "@/lib/supabaseClient";
 import { fmt, dateKey, CHART_COLORS } from "@/lib/calculations";
@@ -226,23 +223,17 @@ export default function AnalyticsPage() {
 
             <ChartCard title="Net Sales by Region / Branch">
               <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={byRegion}
-                    dataKey="net"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={(d) => d.name}
-                  >
+                <BarChart data={byRegion}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => fmt(v)} />
+                  <Bar dataKey="net" radius={[6, 6, 0, 0]}>
                     {byRegion.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => fmt(v)} />
-                  <Legend />
-                </PieChart>
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             </ChartCard>
 
