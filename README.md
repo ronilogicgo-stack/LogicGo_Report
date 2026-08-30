@@ -75,56 +75,41 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
-## Upgrading an already-live project (v1 -> v5)
+## Upgrading an already-live project (v1 -> v7)
 
 If your app is already deployed and you're pulling this update, run the
 migration scripts **in order** before redeploying:
 
 1. Go to your Supabase project -> **SQL Editor** -> New query.
-2. Run `supabase/migration_v2.sql`, then `migration_v3.sql`, then
-   `migration_v4.sql`, then `migration_v5.sql` - in that order, each in
-   its own query.
+2. Run `migration_v2.sql`, `migration_v3.sql`, `migration_v4.sql`,
+   `migration_v5.sql`, `migration_v6.sql`, then `migration_v7.sql` - each
+   in its own query, in that exact order.
 3. Push this code to GitHub as normal - Vercel will redeploy automatically.
 
-### What's new in v5
-- **Corrected formulas.** Daily Collection Gap is now Net Sales minus
-  Collections (matches your latest sheet exactly). Dues Recovery is now
-  a computed figure (Collections minus Net Sales) instead of a manual
-  target - exactly like your spreadsheet's "Monthly Dues Recovery" row.
-- **Full Team Management page** (Admin -> "Team & Requests"). Every
-  approved or paused sales person is always listed here - not just
-  pending requests - showing their phone number, branch/region,
-  employee ID, current status, and the date they last submitted a
-  report. An Admin can edit any of those profile fields, or Pause/Resume
-  access, right from this page.
-- **New profile fields**: Phone Number and Employee/Branch ID, in
-  addition to the existing Branch/Region field.
-- **Colorful Analytics dashboard** (Admin -> "Analytics"). Switch
-  between Daily / Weekly / Monthly / Yearly / Custom date ranges to see:
-  Net Sales by Sales Person, Net Sales by Region/Branch, and a daily
-  trend line - plus headline cards for Total Net Sales, Top Performer,
-  and Top Region.
+### What's new in v7
+- **Self-service profile editing.** A sales person can now update their
+  own Full Name, Phone Number, Branch/Region, and Employee ID directly
+  from a new "My Profile" page - no Admin needed for routine changes.
+- **Email changes require Admin approval.** Requesting a new email
+  locks the account out of every edit (profile, targets, and daily
+  entries) until an Admin approves or rejects it from the "Team &
+  Requests" page. Approving updates their profile email; note that
+  Supabase's own confirmation link (sent to the new address) is the
+  separate, standard step that actually updates their login credential.
+- **A paused account is fully frozen** - it was already blocked from
+  entries and login; now it's also blocked from editing its own
+  profile, at the database level (not just hidden in the UI).
+- **Analytics chart fixes**: the Region/Branch chart (which broke with
+  negative values as a pie chart) is now a bar chart. Charts also
+  gained a zero reference line and horizontal scrolling when there are
+  many sales people, instead of squeezing everyone into a tiny space.
 
-### What's new in v4
-- **Per-field edit tracking.** Only the exact cell that was changed
-  after an entry was first saved - Sales, Collections, Sales Return, or
-  Remarks - turns red with a "×N" count. The rest of the row stays
-  untouched, so it's obvious exactly what was corrected and how many
-  times.
-
-### What's new in v3
-- **Per-employee detail page.** From the Admin dashboard, click any
-  sales person's name to open their individual daily report - exactly
-  like the separate tab each employee had in the original spreadsheet.
-- **Admin can edit any entry**, using the exact same form and rules as
-  the sales person's own dashboard.
-
-### What's new in v2
-- **Pause / Resume an employee.** A paused employee is signed out
-  immediately and cannot log in or submit entries until an Admin clicks
-  "Resume" - enforced both in the UI and at the database level.
-- **Exact match to your Excel sheets** for every field.
-- **Mobile friendly.** Both dashboards switch to stacked cards on phones.
+### What's new in v6
+- Fixed the Region/Branch analytics chart to handle negative Net Sales
+  correctly (bar chart instead of pie chart).
+- A sales person can now set/edit their own Opening Dues, Sales Target,
+  and Collection Target directly from their dashboard ("Edit My
+  Targets"), not just an Admin.
 
 ## Extending later
 

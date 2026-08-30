@@ -17,6 +17,8 @@ create table if not exists public.profiles (
   location text default 'Head Office',
   phone text,
   employee_code text,
+  requested_email text,
+  email_change_pending boolean not null default false,
   role text not null default 'pending' check (role in ('pending', 'sales_person', 'admin')),
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'paused')),
   created_at timestamptz default now()
@@ -145,9 +147,40 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and role = 'sales_person' and status = 'approved'
+    where id = auth.uid()
+      and role = 'sales_person'
+      and status = 'approved'
+      and email_change_pending = false
   );
 $$;
+
+-- Guard trigger: when a NON-admin updates their own profile row,
+-- silently protect role/status/email from being changed directly, and
+-- hard-block the update entirely while an email change request is
+-- pending (only an Admin may touch the row in that state).
+create or replace function public.guard_profile_self_edit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    if old.email_change_pending = true then
+      raise exception 'Your email change request is pending admin approval. No edits are allowed until it is resolved.';
+    end if;
+    new.role := old.role;
+    new.status := old.status;
+    new.email := old.email;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_guard_profile_self_edit on public.profiles;
+create trigger trg_guard_profile_self_edit
+  before update on public.profiles
+  for each row execute function public.guard_profile_self_edit();
 
 -- ---------------------------------------------------------------------
 -- Row Level Security
@@ -172,6 +205,13 @@ create policy "profiles: user can insert own row on signup"
 create policy "profiles: admin can update any row (approve / reject / pause / edit)"
   on public.profiles for update
   using (public.is_admin());
+
+-- An active, approved sales person may update their OWN profile row
+-- (paused/pending/rejected accounts are excluded, so a paused account
+-- truly cannot change anything about itself).
+create policy "profiles: sales person can update own row"
+  on public.profiles for update
+  using (id = auth.uid() and role = 'sales_person' and status = 'approved');
 
 -- MONTHLY TARGETS policies
 create policy "targets: sales person can read own targets"

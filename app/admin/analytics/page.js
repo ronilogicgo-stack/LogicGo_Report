@@ -12,6 +12,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   Cell,
+  ReferenceLine,
 } from "recharts";
 import { createClient } from "@/lib/supabaseClient";
 import { fmt, dateKey, CHART_COLORS } from "@/lib/calculations";
@@ -206,35 +207,51 @@ export default function AnalyticsPage() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <ChartCard title="Net Sales by Sales Person">
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={byPerson}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => fmt(v)} />
-                  <Bar dataKey="net" radius={[6, 6, 0, 0]}>
-                    {byPerson.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <div style={{ minWidth: Math.max(400, byPerson.length * 90) }}>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={byPerson} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <ReferenceLine y={0} stroke="#cbd5e1" />
+                      <Tooltip formatter={(v) => fmt(v)} />
+                      <Bar dataKey="net" radius={[6, 6, 6, 6]} maxBarSize={56}>
+                        {byPerson.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              {byPerson.length > 4 && (
+                <p className="text-xs text-gray-400 mt-1">← scroll to see everyone →</p>
+              )}
             </ChartCard>
 
             <ChartCard title="Net Sales by Region / Branch">
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={byRegion}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => fmt(v)} />
-                  <Bar dataKey="net" radius={[6, 6, 0, 0]}>
-                    {byRegion.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <div style={{ minWidth: Math.max(400, byRegion.length * 90) }}>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={byRegion} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <ReferenceLine y={0} stroke="#cbd5e1" />
+                      <Tooltip formatter={(v) => fmt(v)} />
+                      <Bar dataKey="net" radius={[6, 6, 6, 6]} maxBarSize={56}>
+                        {byRegion.map((_, i) => (
+                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              {byRegion.length > 4 && (
+                <p className="text-xs text-gray-400 mt-1">← scroll to see everyone →</p>
+              )}
             </ChartCard>
 
             <ChartCard title="Daily Net Sales Trend" full>

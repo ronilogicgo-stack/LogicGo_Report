@@ -84,8 +84,9 @@ export default function SalesDashboard() {
     );
     if (error) {
       setTargetError(
-        error.message.includes("row-level security")
-          ? "Your account is paused. Contact your admin to resume access."
+        error.message.includes("row-level security") ||
+          error.message.includes("pending admin approval")
+          ? "Your account is currently locked (paused, or an email change is pending admin approval). Contact your admin."
           : error.message
       );
     } else {

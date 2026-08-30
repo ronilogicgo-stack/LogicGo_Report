@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 
 export default function DashboardLayout({ children }) {
@@ -57,8 +58,19 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="min-h-screen">
-      <nav className="bg-white border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
-        <span className="font-bold truncate">Sales Tracker · {name}</span>
+      <nav className="bg-white border-b px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="font-bold truncate">Sales Tracker · {name}</span>
+          <Link href="/dashboard" className="text-sm text-gray-600 hover:text-black">
+            Dashboard
+          </Link>
+          <Link
+            href="/dashboard/profile"
+            className="text-sm text-gray-600 hover:text-black"
+          >
+            My Profile
+          </Link>
+        </div>
         <button
           onClick={handleLogout}
           className="text-sm text-gray-500 hover:text-black whitespace-nowrap"

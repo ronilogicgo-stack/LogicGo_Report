@@ -79,6 +79,26 @@ export default function TeamManagementPage() {
     load();
   }
 
+  async function approveEmailChange(person) {
+    setBusyId(person.id);
+    await supabase
+      .from("profiles")
+      .update({ email: person.requested_email, email_change_pending: false, requested_email: null })
+      .eq("id", person.id);
+    setBusyId(null);
+    load();
+  }
+
+  async function rejectEmailChange(person) {
+    setBusyId(person.id);
+    await supabase
+      .from("profiles")
+      .update({ email_change_pending: false, requested_email: null })
+      .eq("id", person.id);
+    setBusyId(null);
+    load();
+  }
+
   function startEdit(person) {
     setEditingId(person.id);
     setEditForm({
@@ -153,7 +173,32 @@ export default function TeamManagementPage() {
         ) : (
           <div className="space-y-3">
             {team.map((p) => (
-              <div key={p.id} className="bg-white rounded-xl shadow p-4">
+              <div key={p.id} className="bg-white rounded-xl shadow p-4 space-y-3">
+                {p.email_change_pending && (
+                  <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <span>
+                      Requested email change to{" "}
+                      <strong>{p.requested_email}</strong> - account is locked
+                      until you decide.
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        disabled={busyId === p.id}
+                        onClick={() => approveEmailChange(p)}
+                        className="bg-black text-white rounded px-3 py-1.5 text-xs"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        disabled={busyId === p.id}
+                        onClick={() => rejectEmailChange(p)}
+                        className="border rounded px-3 py-1.5 text-xs text-red-600"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {editingId === p.id ? (
                   <div className="space-y-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

@@ -62,8 +62,9 @@ export default function DailyEntryForm({ userId, editingEntry, onSaved, onCancel
 
     if (upsertError) {
       setError(
-        upsertError.message.includes("row-level security")
-          ? "This account is paused. An admin must resume access before entries can be edited."
+        upsertError.message.includes("row-level security") ||
+          upsertError.message.includes("pending admin approval")
+          ? "Your account is currently locked (paused, or an email change is pending admin approval). Contact your admin."
           : upsertError.message
       );
     } else {
