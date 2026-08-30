@@ -75,6 +75,30 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## Upgrading an already-live project (v1 -> v2)
+
+If your app is already deployed and you're pulling this update, do this
+**before** redeploying:
+
+1. Go to your Supabase project -> **SQL Editor** -> New query.
+2. Paste the entire contents of `supabase/migration_v2.sql` and Run it.
+   (It only adds new columns/rules - it never touches existing data.)
+3. Push this code to GitHub as normal - Vercel will redeploy automatically.
+
+### What's new in v2
+- **Pause / Resume an employee.** On the Admin dashboard, each sales
+  person row has a "Pause" button. A paused employee is signed out
+  immediately and cannot log in or submit entries until an Admin clicks
+  "Resume" - enforced both in the UI and at the database level (Row
+  Level Security), so it can't be bypassed.
+- **Exact match to your Excel sheets.** Every field from both the
+  Admin master sheet and the per-employee daily sheet is now present:
+  Opening Dues, Sales Target/Achievement, Collection Target/Achievement,
+  Collection Gap, Sales Return, Net Sales, Dues Recovery Target, and
+  Closing Dues - calculated with the same formulas as your spreadsheets.
+- **Mobile friendly.** Both dashboards switch from tables to stacked
+  cards automatically on phone-sized screens.
+
 ## Extending later
 
 - Add monthly PDF/Excel export (can reuse the same summary data).

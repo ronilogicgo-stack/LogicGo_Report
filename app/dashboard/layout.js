@@ -28,7 +28,11 @@ export default function DashboardLayout({ children }) {
         .single();
 
       if (!profile || profile.status !== "approved" || profile.role !== "sales_person") {
-        router.replace("/login");
+        // Covers paused/rejected/pending accounts too - sign out any
+        // stale session so a pause takes effect immediately, even if
+        // the tab was already open.
+        await supabase.auth.signOut();
+        router.replace(profile?.status === "paused" ? "/login?paused=1" : "/login");
         return;
       }
 
@@ -53,13 +57,16 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="min-h-screen">
-      <nav className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <span className="font-bold">Sales Tracker · {name}</span>
-        <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-black">
+      <nav className="bg-white border-b px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
+        <span className="font-bold truncate">Sales Tracker · {name}</span>
+        <button
+          onClick={handleLogout}
+          className="text-sm text-gray-500 hover:text-black whitespace-nowrap"
+        >
           Log out
         </button>
       </nav>
-      <main className="p-6">{children}</main>
+      <main className="p-3 sm:p-6">{children}</main>
     </div>
   );
 }

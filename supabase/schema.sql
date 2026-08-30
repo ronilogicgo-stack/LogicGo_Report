@@ -1,10 +1,14 @@
 -- =====================================================================
--- SALES SAAS - DATABASE SCHEMA
--- Run this once in Supabase SQL Editor (Project -> SQL Editor -> New query)
+-- SALES SAAS - DATABASE SCHEMA (v2)
+-- Run this once in Supabase SQL Editor for a BRAND NEW project.
+-- If you already ran the v1 schema on a live project, use
+-- supabase/migration_v2.sql instead (it only adds what's new).
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
 -- 1. PROFILES  (one row per user, extends Supabase auth.users)
+--    status 'paused' = Admin has frozen this employee's access.
+--    A paused user is signed out immediately on login attempt.
 -- ---------------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -12,13 +16,15 @@ create table if not exists public.profiles (
   email text not null,
   location text default 'Head Office',
   role text not null default 'pending' check (role in ('pending', 'sales_person', 'admin')),
-  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'paused')),
   created_at timestamptz default now()
 );
 
 -- ---------------------------------------------------------------------
 -- 2. MONTHLY TARGETS  (set by Admin per sales person, per month)
---    Mirrors: Monthly Sales Target, Monthly Collection Target, Opening Dues
+--    Mirrors the employee sheet's "Subject / Amount" block:
+--    Monthly Sales Target, Monthly Collection Target,
+--    Month Opening Dues, Monthly Dues Recovery (target).
 -- ---------------------------------------------------------------------
 create table if not exists public.monthly_targets (
   id uuid primary key default gen_random_uuid(),
@@ -27,15 +33,17 @@ create table if not exists public.monthly_targets (
   sales_target numeric not null default 0,
   collection_target numeric not null default 0,
   opening_dues numeric not null default 0,
+  dues_recovery_target numeric not null default 0,
   created_at timestamptz default now(),
   unique (user_id, month)
 );
 
 -- ---------------------------------------------------------------------
 -- 3. DAILY ENTRIES  (added by Sales Person, one row per day)
---    Mirrors: Date, Sales, Collections, Sales Return, Remarks
---    net_sales is a GENERATED column so it is ALWAYS calculated the
---    same way for every sales person - never entered by hand.
+--    Mirrors the employee sheet's daily table exactly:
+--    Date, Sales, Collections, Collection Gap, Sales Return, Net Sales, Remarks
+--    net_sales and collection_gap are GENERATED columns so every sales
+--    person is always calculated the exact same way - never by hand.
 -- ---------------------------------------------------------------------
 create table if not exists public.daily_entries (
   id uuid primary key default gen_random_uuid(),
@@ -46,6 +54,7 @@ create table if not exists public.daily_entries (
   sales_return numeric not null default 0,
   remarks text default '',
   net_sales numeric generated always as (sales - sales_return) stored,
+  collection_gap numeric generated always as (sales - collections) stored,
   created_at timestamptz default now(),
   unique (user_id, entry_date)
 );
@@ -62,6 +71,23 @@ as $$
   select exists (
     select 1 from public.profiles
     where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+-- ---------------------------------------------------------------------
+-- Helper: is the currently logged-in user an approved (not paused)
+-- sales person? Used to block writes from paused accounts even if
+-- someone tries to call the API directly.
+-- ---------------------------------------------------------------------
+create or replace function public.is_active_sales_person()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'sales_person' and status = 'approved'
   );
 $$;
 
@@ -85,7 +111,7 @@ create policy "profiles: user can insert own row on signup"
   on public.profiles for insert
   with check (id = auth.uid());
 
-create policy "profiles: admin can update any row (approve / reject / edit)"
+create policy "profiles: admin can update any row (approve / reject / pause / edit)"
   on public.profiles for update
   using (public.is_admin());
 
@@ -98,7 +124,7 @@ create policy "targets: admin can read all targets"
   on public.monthly_targets for select
   using (public.is_admin());
 
-create policy "targets: admin can insert/update targets"
+create policy "targets: admin can insert targets"
   on public.monthly_targets for insert
   with check (public.is_admin());
 
@@ -115,13 +141,14 @@ create policy "entries: admin can read all entries"
   on public.daily_entries for select
   using (public.is_admin());
 
-create policy "entries: sales person can insert own entries"
+-- Only an ACTIVE (approved, not paused) sales person may add/edit entries
+create policy "entries: active sales person can insert own entries"
   on public.daily_entries for insert
-  with check (user_id = auth.uid());
+  with check (user_id = auth.uid() and public.is_active_sales_person());
 
-create policy "entries: sales person can update own entries"
+create policy "entries: active sales person can update own entries"
   on public.daily_entries for update
-  using (user_id = auth.uid());
+  using (user_id = auth.uid() and public.is_active_sales_person());
 
 -- =====================================================================
 -- MAKE THE FIRST ADMIN

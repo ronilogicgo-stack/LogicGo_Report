@@ -11,15 +11,16 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
 
     const { data: people } = await supabase
       .from("profiles")
-      .select("id, full_name, location")
+      .select("id, full_name, location, status")
       .eq("role", "sales_person")
-      .eq("status", "approved")
+      .in("status", ["approved", "paused"])
       .order("full_name");
 
     if (!people || people.length === 0) {
@@ -66,9 +67,10 @@ export default function AdminDashboard() {
   function startEdit(row) {
     setEditingId(row.person.id);
     setEditForm({
+      opening_dues: row.target?.opening_dues || 0,
       sales_target: row.target?.sales_target || 0,
       collection_target: row.target?.collection_target || 0,
-      opening_dues: row.target?.opening_dues || 0,
+      dues_recovery_target: row.target?.dues_recovery_target || 0,
     });
   }
 
@@ -77,13 +79,22 @@ export default function AdminDashboard() {
       {
         user_id: userId,
         month,
+        opening_dues: Number(editForm.opening_dues) || 0,
         sales_target: Number(editForm.sales_target) || 0,
         collection_target: Number(editForm.collection_target) || 0,
-        opening_dues: Number(editForm.opening_dues) || 0,
+        dues_recovery_target: Number(editForm.dues_recovery_target) || 0,
       },
       { onConflict: "user_id,month" }
     );
     setEditingId(null);
+    load();
+  }
+
+  async function togglePause(person) {
+    setBusyId(person.id);
+    const nextStatus = person.status === "paused" ? "approved" : "paused";
+    await supabase.from("profiles").update({ status: nextStatus }).eq("id", person.id);
+    setBusyId(null);
     load();
   }
 
@@ -111,13 +122,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Monthly Sales &amp; Collection Report</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-lg sm:text-xl font-bold">Monthly Sales &amp; Collection Report</h1>
         <input
           type="month"
           value={month.slice(0, 7)}
           onChange={(e) => setMonth(`${e.target.value}-01`)}
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 w-full sm:w-auto"
         />
       </div>
 
@@ -128,128 +139,341 @@ export default function AdminDashboard() {
           No approved sales persons yet. Approve requests first.
         </p>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-xl shadow">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="p-3">Sales Person</th>
-                <th className="p-3">Location</th>
-                <th className="p-3 text-right">Opening Dues</th>
-                <th className="p-3 text-right">Sales Target</th>
-                <th className="p-3 text-right">Sales Achv.</th>
-                <th className="p-3 text-right">Collection Target</th>
-                <th className="p-3 text-right">Collection Achv.</th>
-                <th className="p-3 text-right">Gap</th>
-                <th className="p-3 text-right">Sales Return</th>
-                <th className="p-3 text-right">Net Sales</th>
-                <th className="p-3 text-right">Closing Dues</th>
-                <th className="p-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.person.id} className="border-t">
-                  <td className="p-3 font-medium">{r.person.full_name}</td>
-                  <td className="p-3">{r.person.location}</td>
-
-                  {editingId === r.person.id ? (
-                    <>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          className="w-24 border rounded px-2 py-1"
-                          value={editForm.opening_dues}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, opening_dues: e.target.value })
-                          }
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          className="w-24 border rounded px-2 py-1"
-                          value={editForm.sales_target}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, sales_target: e.target.value })
-                          }
-                        />
-                      </td>
-                      <td className="p-3 text-right">{fmt(r.summary.sales_achievement)}</td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          className="w-24 border rounded px-2 py-1"
-                          value={editForm.collection_target}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              collection_target: e.target.value,
-                            })
-                          }
-                        />
-                      </td>
-                      <td className="p-3 text-right">
-                        {fmt(r.summary.collection_achievement)}
-                      </td>
-                      <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
-                      <td className="p-2">
-                        <button
-                          onClick={() => saveTarget(r.person.id)}
-                          className="bg-black text-white rounded px-3 py-1 text-xs"
-                        >
-                          Save
-                        </button>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="p-3 text-right">{fmt(r.summary.opening_dues)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.sales_target)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.sales_achievement)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.collection_target)}</td>
-                      <td className="p-3 text-right">
-                        {fmt(r.summary.collection_achievement)}
-                      </td>
-                      <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
-                      <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
-                      <td className="p-2">
-                        <button
-                          onClick={() => startEdit(r)}
-                          className="text-xs text-blue-600 underline"
-                        >
-                          Edit Targets
-                        </button>
-                      </td>
-                    </>
-                  )}
+        <>
+          {/* ---------- DESKTOP: full table ---------- */}
+          <div className="hidden lg:block overflow-x-auto bg-white rounded-xl shadow">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-100 text-left">
+                <tr>
+                  <th className="p-3">Sales Person</th>
+                  <th className="p-3">Location</th>
+                  <th className="p-3 text-right">Opening Dues</th>
+                  <th className="p-3 text-right">Sales Target</th>
+                  <th className="p-3 text-right">Sales Achv.</th>
+                  <th className="p-3 text-right">Collection Target</th>
+                  <th className="p-3 text-right">Collection Achv.</th>
+                  <th className="p-3 text-right">Gap</th>
+                  <th className="p-3 text-right">Sales Return</th>
+                  <th className="p-3 text-right">Net Sales</th>
+                  <th className="p-3 text-right">Dues Recovery Target</th>
+                  <th className="p-3 text-right">Closing Dues</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3"></th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-gray-50 font-semibold border-t">
-              <tr>
-                <td className="p-3" colSpan={2}>
-                  Grand Total
-                </td>
-                <td className="p-3 text-right">-</td>
-                <td className="p-3 text-right">{fmt(grandTotal.sales_target)}</td>
-                <td className="p-3 text-right">{fmt(grandTotal.sales_achievement)}</td>
-                <td className="p-3 text-right">{fmt(grandTotal.collection_target)}</td>
-                <td className="p-3 text-right">{fmt(grandTotal.collection_achievement)}</td>
-                <td className="p-3 text-right">{fmt(grandTotal.collection_gap)}</td>
-                <td className="p-3 text-right">{fmt(grandTotal.sales_return)}</td>
-                <td className="p-3 text-right">{fmt(grandTotal.net_sales)}</td>
-                <td className="p-3"></td>
-                <td className="p-3"></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.person.id} className="border-t">
+                    <td className="p-3 font-medium">{r.person.full_name}</td>
+                    <td className="p-3">{r.person.location}</td>
+
+                    {editingId === r.person.id ? (
+                      <>
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            className="w-24 border rounded px-2 py-1"
+                            value={editForm.opening_dues}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, opening_dues: e.target.value })
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            className="w-24 border rounded px-2 py-1"
+                            value={editForm.sales_target}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, sales_target: e.target.value })
+                            }
+                          />
+                        </td>
+                        <td className="p-3 text-right">{fmt(r.summary.sales_achievement)}</td>
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            className="w-24 border rounded px-2 py-1"
+                            value={editForm.collection_target}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                collection_target: e.target.value,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-3 text-right">
+                          {fmt(r.summary.collection_achievement)}
+                        </td>
+                        <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
+                        <td className="p-2">
+                          <input
+                            type="number"
+                            className="w-24 border rounded px-2 py-1"
+                            value={editForm.dues_recovery_target}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                dues_recovery_target: e.target.value,
+                              })
+                            }
+                          />
+                        </td>
+                        <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
+                        <td className="p-3">
+                          <StatusBadge status={r.person.status} />
+                        </td>
+                        <td className="p-2 whitespace-nowrap">
+                          <button
+                            onClick={() => saveTarget(r.person.id)}
+                            className="bg-black text-white rounded px-3 py-1 text-xs"
+                          >
+                            Save
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="p-3 text-right">{fmt(r.summary.opening_dues)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.sales_target)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.sales_achievement)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.collection_target)}</td>
+                        <td className="p-3 text-right">
+                          {fmt(r.summary.collection_achievement)}
+                        </td>
+                        <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
+                        <td className="p-3 text-right">
+                          {fmt(r.summary.dues_recovery_target)}
+                        </td>
+                        <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
+                        <td className="p-3">
+                          <StatusBadge status={r.person.status} />
+                        </td>
+                        <td className="p-2 whitespace-nowrap space-x-2">
+                          <button
+                            onClick={() => startEdit(r)}
+                            className="text-xs text-blue-600 underline"
+                          >
+                            Edit Targets
+                          </button>
+                          <button
+                            disabled={busyId === r.person.id}
+                            onClick={() => togglePause(r.person)}
+                            className={`text-xs underline ${
+                              r.person.status === "paused"
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {r.person.status === "paused" ? "Resume" : "Pause"}
+                          </button>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-50 font-semibold border-t">
+                <tr>
+                  <td className="p-3" colSpan={2}>
+                    Grand Total
+                  </td>
+                  <td className="p-3 text-right">-</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.sales_target)}</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.sales_achievement)}</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.collection_target)}</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.collection_achievement)}</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.collection_gap)}</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.sales_return)}</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.net_sales)}</td>
+                  <td className="p-3"></td>
+                  <td className="p-3"></td>
+                  <td className="p-3"></td>
+                  <td className="p-3"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* ---------- MOBILE / TABLET: stacked cards ---------- */}
+          <div className="lg:hidden space-y-3">
+            {rows.map((r) => (
+              <div key={r.person.id} className="bg-white rounded-xl shadow p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">{r.person.full_name}</p>
+                    <p className="text-xs text-gray-500">{r.person.location}</p>
+                  </div>
+                  <StatusBadge status={r.person.status} />
+                </div>
+
+                {editingId === r.person.id ? (
+                  <div className="space-y-2">
+                    <LabeledInput
+                      label="Opening Dues"
+                      value={editForm.opening_dues}
+                      onChange={(v) => setEditForm({ ...editForm, opening_dues: v })}
+                    />
+                    <LabeledInput
+                      label="Sales Target"
+                      value={editForm.sales_target}
+                      onChange={(v) => setEditForm({ ...editForm, sales_target: v })}
+                    />
+                    <LabeledInput
+                      label="Collection Target"
+                      value={editForm.collection_target}
+                      onChange={(v) => setEditForm({ ...editForm, collection_target: v })}
+                    />
+                    <LabeledInput
+                      label="Dues Recovery Target"
+                      value={editForm.dues_recovery_target}
+                      onChange={(v) =>
+                        setEditForm({ ...editForm, dues_recovery_target: v })
+                      }
+                    />
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => saveTarget(r.person.id)}
+                        className="bg-black text-white rounded px-4 py-2 text-sm flex-1"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="border rounded px-4 py-2 text-sm flex-1"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-y-2 text-sm">
+                      <StatRow label="Opening Dues" value={fmt(r.summary.opening_dues)} />
+                      <StatRow label="Sales Target" value={fmt(r.summary.sales_target)} />
+                      <StatRow
+                        label="Sales Achv."
+                        value={fmt(r.summary.sales_achievement)}
+                      />
+                      <StatRow
+                        label="Collection Target"
+                        value={fmt(r.summary.collection_target)}
+                      />
+                      <StatRow
+                        label="Collection Achv."
+                        value={fmt(r.summary.collection_achievement)}
+                      />
+                      <StatRow label="Gap" value={fmt(r.summary.collection_gap)} />
+                      <StatRow label="Sales Return" value={fmt(r.summary.sales_return)} />
+                      <StatRow label="Net Sales" value={fmt(r.summary.net_sales)} bold />
+                      <StatRow
+                        label="Dues Recovery Tgt."
+                        value={fmt(r.summary.dues_recovery_target)}
+                      />
+                      <StatRow
+                        label="Closing Dues"
+                        value={fmt(r.summary.closing_dues)}
+                        bold
+                      />
+                    </div>
+                    <div className="flex gap-4 pt-2 border-t">
+                      <button
+                        onClick={() => startEdit(r)}
+                        className="text-sm text-blue-600 underline"
+                      >
+                        Edit Targets
+                      </button>
+                      <button
+                        disabled={busyId === r.person.id}
+                        onClick={() => togglePause(r.person)}
+                        className={`text-sm underline ${
+                          r.person.status === "paused" ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {r.person.status === "paused" ? "Resume Access" : "Pause Access"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+
+            {/* Grand total card */}
+            <div className="bg-gray-900 text-white rounded-xl shadow p-4">
+              <p className="font-semibold mb-2">Grand Total</p>
+              <div className="grid grid-cols-2 gap-y-2 text-sm">
+                <StatRow label="Sales Target" value={fmt(grandTotal.sales_target)} dark />
+                <StatRow
+                  label="Sales Achv."
+                  value={fmt(grandTotal.sales_achievement)}
+                  dark
+                />
+                <StatRow
+                  label="Collection Target"
+                  value={fmt(grandTotal.collection_target)}
+                  dark
+                />
+                <StatRow
+                  label="Collection Achv."
+                  value={fmt(grandTotal.collection_achievement)}
+                  dark
+                />
+                <StatRow label="Gap" value={fmt(grandTotal.collection_gap)} dark />
+                <StatRow
+                  label="Sales Return"
+                  value={fmt(grandTotal.sales_return)}
+                  dark
+                />
+                <StatRow label="Net Sales" value={fmt(grandTotal.net_sales)} dark bold />
+              </div>
+            </div>
+          </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  const styles = {
+    approved: "bg-green-100 text-green-700",
+    paused: "bg-yellow-100 text-yellow-700",
+  };
+  return (
+    <span
+      className={`text-xs px-2 py-1 rounded-full font-medium ${
+        styles[status] || "bg-gray-100 text-gray-600"
+      }`}
+    >
+      {status === "paused" ? "Paused" : "Active"}
+    </span>
+  );
+}
+
+function StatRow({ label, value, bold, dark }) {
+  return (
+    <>
+      <span className={dark ? "text-gray-300" : "text-gray-500"}>{label}</span>
+      <span className={`text-right ${bold ? "font-semibold" : ""}`}>{value}</span>
+    </>
+  );
+}
+
+function LabeledInput({ label, value, onChange }) {
+  return (
+    <div>
+      <label className="text-xs text-gray-500">{label}</label>
+      <input
+        type="number"
+        className="w-full border rounded px-3 py-2 mt-0.5"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }

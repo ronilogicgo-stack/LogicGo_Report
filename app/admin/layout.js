@@ -52,9 +52,9 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen">
-      <nav className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <span className="font-bold">Sales Tracker · Admin</span>
+      <nav className="bg-white border-b px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <span className="font-bold whitespace-nowrap">Sales Tracker · Admin</span>
           <Link href="/admin" className="text-sm text-gray-600 hover:text-black">
             Dashboard
           </Link>
@@ -69,7 +69,7 @@ export default function AdminLayout({ children }) {
           Log out
         </button>
       </nav>
-      <main className="p-6">{children}</main>
+      <main className="p-3 sm:p-6">{children}</main>
     </div>
   );
 }
