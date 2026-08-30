@@ -71,7 +71,6 @@ export default function AdminDashboard() {
       opening_dues: row.target?.opening_dues || 0,
       sales_target: row.target?.sales_target || 0,
       collection_target: row.target?.collection_target || 0,
-      dues_recovery_target: row.target?.dues_recovery_target || 0,
     });
   }
 
@@ -83,7 +82,6 @@ export default function AdminDashboard() {
         opening_dues: Number(editForm.opening_dues) || 0,
         sales_target: Number(editForm.sales_target) || 0,
         collection_target: Number(editForm.collection_target) || 0,
-        dues_recovery_target: Number(editForm.dues_recovery_target) || 0,
       },
       { onConflict: "user_id,month" }
     );
@@ -156,7 +154,7 @@ export default function AdminDashboard() {
                   <th className="p-3 text-right">Gap</th>
                   <th className="p-3 text-right">Sales Return</th>
                   <th className="p-3 text-right">Net Sales</th>
-                  <th className="p-3 text-right">Dues Recovery Target</th>
+                  <th className="p-3 text-right">Dues Recovery</th>
                   <th className="p-3 text-right">Closing Dues</th>
                   <th className="p-3">Status</th>
                   <th className="p-3"></th>
@@ -217,19 +215,7 @@ export default function AdminDashboard() {
                         <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
-                        <td className="p-2">
-                          <input
-                            type="number"
-                            className="w-24 border rounded px-2 py-1"
-                            value={editForm.dues_recovery_target}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                dues_recovery_target: e.target.value,
-                              })
-                            }
-                          />
-                        </td>
+                        <td className="p-3 text-right">{fmt(r.summary.dues_recovery)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
                         <td className="p-3">
                           <StatusBadge status={r.person.status} />
@@ -256,7 +242,7 @@ export default function AdminDashboard() {
                         <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
                         <td className="p-3 text-right">
-                          {fmt(r.summary.dues_recovery_target)}
+                          {fmt(r.summary.dues_recovery)}
                         </td>
                         <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
                         <td className="p-3">
@@ -342,13 +328,6 @@ export default function AdminDashboard() {
                       value={editForm.collection_target}
                       onChange={(v) => setEditForm({ ...editForm, collection_target: v })}
                     />
-                    <LabeledInput
-                      label="Dues Recovery Target"
-                      value={editForm.dues_recovery_target}
-                      onChange={(v) =>
-                        setEditForm({ ...editForm, dues_recovery_target: v })
-                      }
-                    />
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => saveTarget(r.person.id)}
@@ -385,8 +364,8 @@ export default function AdminDashboard() {
                       <StatRow label="Sales Return" value={fmt(r.summary.sales_return)} />
                       <StatRow label="Net Sales" value={fmt(r.summary.net_sales)} bold />
                       <StatRow
-                        label="Dues Recovery Tgt."
-                        value={fmt(r.summary.dues_recovery_target)}
+                        label="Dues Recovery"
+                        value={fmt(r.summary.dues_recovery)}
                       />
                       <StatRow
                         label="Closing Dues"

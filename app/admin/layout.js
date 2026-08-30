@@ -62,7 +62,13 @@ export default function AdminLayout({ children }) {
             href="/admin/requests"
             className="text-sm text-gray-600 hover:text-black"
           >
-            Access Requests
+            Team &amp; Requests
+          </Link>
+          <Link
+            href="/admin/analytics"
+            className="text-sm text-gray-600 hover:text-black"
+          >
+            Analytics
           </Link>
         </div>
         <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-black">

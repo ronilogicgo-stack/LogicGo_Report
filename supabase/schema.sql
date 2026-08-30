@@ -15,6 +15,8 @@ create table if not exists public.profiles (
   full_name text not null,
   email text not null,
   location text default 'Head Office',
+  phone text,
+  employee_code text,
   role text not null default 'pending' check (role in ('pending', 'sales_person', 'admin')),
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'paused')),
   created_at timestamptz default now()
@@ -54,7 +56,7 @@ create table if not exists public.daily_entries (
   sales_return numeric not null default 0,
   remarks text default '',
   net_sales numeric generated always as (sales - sales_return) stored,
-  collection_gap numeric generated always as (sales - collections) stored,
+  collection_gap numeric generated always as ((sales - sales_return) - collections) stored,
   -- Per-field edit counters, e.g. {"sales":0,"collections":2,"sales_return":1,"remarks":0}
   -- Only the exact field that changes gets its counter bumped, so the UI
   -- can highlight just that one cell in red - not the whole row.

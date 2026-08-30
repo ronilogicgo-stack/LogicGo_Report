@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { netSales, dailyCollectionGap, fmt } from "@/lib/calculations";
-
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -145,7 +144,7 @@ export default function DailyEntryForm({ userId, editingEntry, onSaved, onCancel
           <p className="text-sm text-gray-500">
             Collection Gap:{" "}
             <span className="font-semibold">
-              {fmt(dailyCollectionGap(form.sales, form.collections))}
+              {fmt(dailyCollectionGap(form.sales, form.sales_return, form.collections))}
             </span>
             {"  ·  "}
             Net Sales:{" "}
