@@ -92,8 +92,14 @@ export default function AdminDashboard() {
   async function togglePause(person) {
     setBusyId(person.id);
     const nextStatus = person.status === "paused" ? "approved" : "paused";
-    await supabase.from("profiles").update({ status: nextStatus }).eq("id", person.id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ status: nextStatus })
+      .eq("id", person.id);
     setBusyId(null);
+    if (error) {
+      alert(`Could not update status: ${error.message}`);
+    }
     load();
   }
 
