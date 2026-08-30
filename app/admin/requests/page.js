@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabaseClient";
 
 export default function TeamManagementPage() {
   const supabase = createClient();
+  const [myId, setMyId] = useState(null);
   const [pending, setPending] = useState([]);
   const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,8 +13,16 @@ export default function TeamManagementPage() {
   const [editForm, setEditForm] = useState({});
   const [busyId, setBusyId] = useState(null);
 
+  // Which roles are checked for each still-pending request, before approving.
+  const [pendingRoles, setPendingRoles] = useState({});
+
   const load = useCallback(async () => {
     setLoading(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) setMyId(session.user.id);
 
     const { data: pendingData } = await supabase
       .from("profiles")
@@ -22,28 +31,37 @@ export default function TeamManagementPage() {
       .order("created_at", { ascending: true });
     setPending(pendingData || []);
 
+    // Default every new pending request to "Sales Person" checked.
+    setPendingRoles((prev) => {
+      const next = { ...prev };
+      for (const p of pendingData || []) {
+        if (!(p.id in next)) next[p.id] = { is_sales_person: true, is_admin: false };
+      }
+      return next;
+    });
+
     const { data: teamData } = await supabase
       .from("profiles")
       .select("*")
-      .eq("role", "sales_person")
       .in("status", ["approved", "paused"])
+      .or("is_sales_person.eq.true,is_admin.eq.true")
       .order("full_name");
 
     if (teamData && teamData.length > 0) {
-      const ids = teamData.map((p) => p.id);
-      // One query for everyone's entries, newest first, so the FIRST row
-      // per user_id we see is that person's most recent report date.
-      const { data: entries } = await supabase
-        .from("daily_entries")
-        .select("user_id, entry_date")
-        .in("user_id", ids)
-        .order("entry_date", { ascending: false });
-
-      const lastReport = {};
-      for (const e of entries || []) {
-        if (!lastReport[e.user_id]) lastReport[e.user_id] = e.entry_date;
+      const salesIds = teamData.filter((p) => p.is_sales_person).map((p) => p.id);
+      let lastReport = {};
+      if (salesIds.length > 0) {
+        // One query for everyone's entries, newest first, so the FIRST
+        // row per user_id we see is that person's most recent report.
+        const { data: entries } = await supabase
+          .from("daily_entries")
+          .select("user_id, entry_date")
+          .in("user_id", salesIds)
+          .order("entry_date", { ascending: false });
+        for (const e of entries || []) {
+          if (!lastReport[e.user_id]) lastReport[e.user_id] = e.entry_date;
+        }
       }
-
       setTeam(teamData.map((p) => ({ ...p, last_report: lastReport[p.id] || null })));
     } else {
       setTeam([]);
@@ -56,18 +74,28 @@ export default function TeamManagementPage() {
     load();
   }, [load]);
 
-  async function approve(id) {
-    // Approving turns this pending request into a full sales_person,
-    // with the same default behaviour as every other sales person.
-    await supabase
+  async function approve(person) {
+    const roles = pendingRoles[person.id] || { is_sales_person: true, is_admin: false };
+    setBusyId(person.id);
+    const { error } = await supabase
       .from("profiles")
-      .update({ role: "sales_person", status: "approved" })
-      .eq("id", id);
+      .update({
+        is_sales_person: roles.is_sales_person,
+        is_admin: roles.is_admin,
+        status: "approved",
+      })
+      .eq("id", person.id);
+    setBusyId(null);
+    if (error) alert(`Could not approve: ${error.message}`);
     load();
   }
 
   async function reject(id) {
-    await supabase.from("profiles").update({ status: "rejected" }).eq("id", id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ status: "rejected" })
+      .eq("id", id);
+    if (error) alert(`Could not reject: ${error.message}`);
     load();
   }
 
@@ -79,29 +107,33 @@ export default function TeamManagementPage() {
       .update({ status: nextStatus })
       .eq("id", person.id);
     setBusyId(null);
-    if (error) {
-      alert(`Could not update status: ${error.message}`);
-    }
+    if (error) alert(`Could not update status: ${error.message}`);
     load();
   }
 
   async function approveEmailChange(person) {
     setBusyId(person.id);
-    await supabase
+    const { error } = await supabase
       .from("profiles")
-      .update({ email: person.requested_email, email_change_pending: false, requested_email: null })
+      .update({
+        email: person.requested_email,
+        email_change_pending: false,
+        requested_email: null,
+      })
       .eq("id", person.id);
     setBusyId(null);
+    if (error) alert(`Could not approve email change: ${error.message}`);
     load();
   }
 
   async function rejectEmailChange(person) {
     setBusyId(person.id);
-    await supabase
+    const { error } = await supabase
       .from("profiles")
       .update({ email_change_pending: false, requested_email: null })
       .eq("id", person.id);
     setBusyId(null);
+    if (error) alert(`Could not reject email change: ${error.message}`);
     load();
   }
 
@@ -112,19 +144,27 @@ export default function TeamManagementPage() {
       phone: person.phone || "",
       location: person.location || "",
       employee_code: person.employee_code || "",
+      is_sales_person: person.is_sales_person,
+      is_admin: person.is_admin,
     });
   }
 
   async function saveProfile(id) {
-    await supabase
+    const { error } = await supabase
       .from("profiles")
       .update({
         full_name: editForm.full_name,
         phone: editForm.phone,
         location: editForm.location,
         employee_code: editForm.employee_code,
+        is_sales_person: editForm.is_sales_person,
+        is_admin: editForm.is_admin,
       })
       .eq("id", id);
+    if (error) {
+      alert(`Could not save: ${error.message}`);
+      return;
+    }
     setEditingId(null);
     load();
   }
@@ -148,11 +188,46 @@ export default function TeamManagementPage() {
                 <div>
                   <p className="font-medium">{p.full_name}</p>
                   <p className="text-sm text-gray-500">{p.email}</p>
+                  <div className="flex gap-4 mt-2">
+                    <label className="flex items-center gap-1.5 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={pendingRoles[p.id]?.is_sales_person ?? true}
+                        onChange={(e) =>
+                          setPendingRoles({
+                            ...pendingRoles,
+                            [p.id]: {
+                              ...pendingRoles[p.id],
+                              is_sales_person: e.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      Sales Person
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={pendingRoles[p.id]?.is_admin ?? false}
+                        onChange={(e) =>
+                          setPendingRoles({
+                            ...pendingRoles,
+                            [p.id]: {
+                              ...pendingRoles[p.id],
+                              is_admin: e.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      Admin
+                    </label>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => approve(p.id)}
-                    className="bg-black text-white rounded-lg px-4 py-2 text-sm flex-1 sm:flex-none"
+                    disabled={busyId === p.id}
+                    onClick={() => approve(p)}
+                    className="bg-black text-white rounded-lg px-4 py-2 text-sm flex-1 sm:flex-none disabled:opacity-50"
                   >
                     Approve
                   </button>
@@ -169,13 +244,13 @@ export default function TeamManagementPage() {
         )}
       </div>
 
-      {/* ---------- SALES TEAM (always visible) ---------- */}
+      {/* ---------- TEAM (always visible - Sales Persons and/or Admins) ---------- */}
       <div className="space-y-3">
-        <h2 className="text-lg font-bold">Sales Team</h2>
+        <h2 className="text-lg font-bold">Team</h2>
         {loading ? (
           <p className="text-gray-500">Loading...</p>
         ) : team.length === 0 ? (
-          <p className="text-gray-500">No approved sales persons yet.</p>
+          <p className="text-gray-500">No approved team members yet.</p>
         ) : (
           <div className="space-y-3">
             {team.map((p) => (
@@ -206,7 +281,7 @@ export default function TeamManagementPage() {
                   </div>
                 )}
                 {editingId === p.id ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <LabeledInput
                         label="Full Name"
@@ -231,6 +306,41 @@ export default function TeamManagementPage() {
                         }
                       />
                     </div>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={editForm.is_sales_person}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              is_sales_person: e.target.checked,
+                            })
+                          }
+                        />
+                        Sales Person
+                      </label>
+                      <label
+                        className={`flex items-center gap-1.5 text-sm ${
+                          p.id === myId ? "text-gray-400" : ""
+                        }`}
+                        title={
+                          p.id === myId
+                            ? "You cannot remove your own Admin access."
+                            : ""
+                        }
+                      >
+                        <input
+                          type="checkbox"
+                          disabled={p.id === myId}
+                          checked={editForm.is_admin}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, is_admin: e.target.checked })
+                          }
+                        />
+                        Admin
+                      </label>
+                    </div>
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => saveProfile(p.id)}
@@ -249,21 +359,25 @@ export default function TeamManagementPage() {
                 ) : (
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold">{p.full_name}</p>
                         <StatusBadge status={p.status} />
+                        {p.is_sales_person && <RoleBadge label="Sales Person" />}
+                        {p.is_admin && <RoleBadge label="Admin" color="indigo" />}
                       </div>
                       <p className="text-sm text-gray-500">{p.email}</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
                         <span>📞 {p.phone || "-"}</span>
                         <span>📍 {p.location || "-"}</span>
                         <span>🆔 {p.employee_code || "-"}</span>
-                        <span>
-                          🗓 Last report:{" "}
-                          <span className={p.last_report ? "" : "text-gray-400"}>
-                            {p.last_report || "never"}
+                        {p.is_sales_person && (
+                          <span>
+                            🗓 Last report:{" "}
+                            <span className={p.last_report ? "" : "text-gray-400"}>
+                              {p.last_report || "never"}
+                            </span>
                           </span>
-                        </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-4">
@@ -273,15 +387,17 @@ export default function TeamManagementPage() {
                       >
                         Edit Profile
                       </button>
-                      <button
-                        disabled={busyId === p.id}
-                        onClick={() => togglePause(p)}
-                        className={`text-sm underline ${
-                          p.status === "paused" ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {p.status === "paused" ? "Resume Access" : "Pause Access"}
-                      </button>
+                      {p.is_sales_person && (
+                        <button
+                          disabled={busyId === p.id}
+                          onClick={() => togglePause(p)}
+                          className={`text-sm underline ${
+                            p.status === "paused" ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {p.status === "paused" ? "Resume Access" : "Pause Access"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -306,6 +422,18 @@ function StatusBadge({ status }) {
       }`}
     >
       {status === "paused" ? "Paused" : "Active"}
+    </span>
+  );
+}
+
+function RoleBadge({ label, color = "gray" }) {
+  const styles = {
+    gray: "bg-gray-100 text-gray-600",
+    indigo: "bg-indigo-100 text-indigo-700",
+  };
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${styles[color]}`}>
+      {label}
     </span>
   );
 }

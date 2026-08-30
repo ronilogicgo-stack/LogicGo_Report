@@ -46,7 +46,6 @@ function SignupForm() {
       id: data.user.id,
       full_name: fullName,
       email,
-      role: "pending",
       status: "pending",
     });
 

@@ -20,7 +20,7 @@ export default function AdminDashboard() {
     const { data: people } = await supabase
       .from("profiles")
       .select("id, full_name, location, status")
-      .eq("role", "sales_person")
+      .eq("is_sales_person", true)
       .in("status", ["approved", "paused"])
       .order("full_name");
 

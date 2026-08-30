@@ -10,6 +10,7 @@ export default function DashboardLayout({ children }) {
   const supabase = createClient();
   const [checked, setChecked] = useState(false);
   const [name, setName] = useState("");
+  const [alsoAdmin, setAlsoAdmin] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -24,20 +25,23 @@ export default function DashboardLayout({ children }) {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, status, full_name")
+        .select("is_admin, is_sales_person, status, full_name")
         .eq("id", session.user.id)
         .single();
 
-      if (!profile || profile.status !== "approved" || profile.role !== "sales_person") {
+      if (!profile || profile.status !== "approved" || !profile.is_sales_person) {
         // Covers paused/rejected/pending accounts too - sign out any
         // stale session so a pause takes effect immediately, even if
-        // the tab was already open.
+        // the tab was already open. (An Admin-only account with no
+        // Sales Person role also lands here, since this dashboard isn't
+        // meant for them.)
         await supabase.auth.signOut();
         router.replace(profile?.status === "paused" ? "/login?paused=1" : "/login");
         return;
       }
 
       setName(profile.full_name);
+      setAlsoAdmin(!!profile.is_admin);
       setChecked(true);
     }
     check();
@@ -70,6 +74,14 @@ export default function DashboardLayout({ children }) {
           >
             My Profile
           </Link>
+          {alsoAdmin && (
+            <Link
+              href="/admin"
+              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              Admin Panel →
+            </Link>
+          )}
         </div>
         <button
           onClick={handleLogout}

@@ -22,15 +22,15 @@ export default function Home() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, status")
+        .select("is_admin, is_sales_person, status")
         .eq("id", session.user.id)
         .single();
 
       if (!profile) {
         router.replace("/login");
-      } else if (profile.role === "admin") {
+      } else if (profile.is_admin) {
         router.replace("/admin");
-      } else if (profile.status === "approved") {
+      } else if (profile.is_sales_person && profile.status === "approved") {
         router.replace("/dashboard");
       } else {
         router.replace("/signup?pending=1");

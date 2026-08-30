@@ -44,7 +44,7 @@ function LoginForm() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, status")
+      .select("is_admin, is_sales_person, status")
       .eq("id", data.user.id)
       .single();
 
@@ -54,14 +54,13 @@ function LoginForm() {
       return;
     }
 
-    if (profile.role === "admin") {
+    if (profile.is_admin) {
+      // Admin access does not depend on `status` - pausing only affects
+      // a person's Sales Person capabilities, never their Admin rights.
       router.push("/admin");
-    } else if (profile.status === "approved") {
+    } else if (profile.is_sales_person && profile.status === "approved") {
       router.push("/dashboard");
-    } else if (profile.status === "paused") {
-      // Paused accounts are signed out immediately - they cannot use the
-      // app until an admin resumes them, even though their password
-      // still technically works.
+    } else if (profile.is_sales_person && profile.status === "paused") {
       await supabase.auth.signOut();
       setError("Your account has been paused by the admin. Please contact your admin.");
     } else if (profile.status === "pending") {

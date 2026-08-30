@@ -19,7 +19,10 @@ create table if not exists public.profiles (
   employee_code text,
   requested_email text,
   email_change_pending boolean not null default false,
-  role text not null default 'pending' check (role in ('pending', 'sales_person', 'admin')),
+  -- A profile can be BOTH an Admin and a Sales Person at once - both
+  -- checkboxes independently control which dashboard(s) they can use.
+  is_admin boolean not null default false,
+  is_sales_person boolean not null default false,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'paused')),
   created_at timestamptz default now()
 );
@@ -130,7 +133,7 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
+    where id = auth.uid() and is_admin = true
   );
 $$;
 
@@ -148,7 +151,7 @@ as $$
   select exists (
     select 1 from public.profiles
     where id = auth.uid()
-      and role = 'sales_person'
+      and is_sales_person = true
       and status = 'approved'
       and email_change_pending = false
   );
@@ -169,7 +172,8 @@ begin
     if old.email_change_pending = true then
       raise exception 'Your email change request is pending admin approval. No edits are allowed until it is resolved.';
     end if;
-    new.role := old.role;
+    new.is_admin := old.is_admin;
+    new.is_sales_person := old.is_sales_person;
     new.status := old.status;
     new.email := old.email;
   end if;
@@ -211,7 +215,7 @@ create policy "profiles: admin can update any row (approve / reject / pause / ed
 -- truly cannot change anything about itself).
 create policy "profiles: sales person can update own row"
   on public.profiles for update
-  using (id = auth.uid() and role = 'sales_person' and status = 'approved');
+  using (id = auth.uid() and is_sales_person = true and status = 'approved');
 
 -- MONTHLY TARGETS policies
 create policy "targets: sales person can read own targets"
@@ -273,6 +277,6 @@ create policy "entries: admin can update any entries"
 -- (replace the email) so that first account becomes Admin:
 --
 --   update public.profiles
---   set role = 'admin', status = 'approved'
+--   set is_admin = true, status = 'approved'
 --   where email = 'you@example.com';
 -- =====================================================================

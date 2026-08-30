@@ -9,6 +9,7 @@ export default function AdminLayout({ children }) {
   const router = useRouter();
   const supabase = createClient();
   const [checked, setChecked] = useState(false);
+  const [alsoSalesPerson, setAlsoSalesPerson] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -23,15 +24,16 @@ export default function AdminLayout({ children }) {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("is_admin, is_sales_person")
         .eq("id", session.user.id)
         .single();
 
-      if (!profile || profile.role !== "admin") {
+      if (!profile || !profile.is_admin) {
         router.replace("/login");
         return;
       }
 
+      setAlsoSalesPerson(!!profile.is_sales_person);
       setChecked(true);
     }
     check();
@@ -70,6 +72,14 @@ export default function AdminLayout({ children }) {
           >
             Analytics
           </Link>
+          {alsoSalesPerson && (
+            <Link
+              href="/dashboard"
+              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            >
+              My Sales Dashboard →
+            </Link>
+          )}
         </div>
         <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-black">
           Log out

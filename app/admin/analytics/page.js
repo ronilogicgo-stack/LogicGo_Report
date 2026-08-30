@@ -61,7 +61,7 @@ export default function AnalyticsPage() {
     const { data: peopleData } = await supabase
       .from("profiles")
       .select("id, full_name, location")
-      .eq("role", "sales_person")
+      .eq("is_sales_person", true)
       .eq("status", "approved");
 
     setPeople(peopleData || []);

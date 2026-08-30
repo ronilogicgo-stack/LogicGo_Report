@@ -75,41 +75,50 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
-## Upgrading an already-live project (v1 -> v7)
+## Upgrading an already-live project (v1 -> v8)
 
 If your app is already deployed and you're pulling this update, run the
 migration scripts **in order** before redeploying:
 
 1. Go to your Supabase project -> **SQL Editor** -> New query.
-2. Run `migration_v2.sql`, `migration_v3.sql`, `migration_v4.sql`,
-   `migration_v5.sql`, `migration_v6.sql`, then `migration_v7.sql` - each
-   in its own query, in that exact order.
-3. Push this code to GitHub as normal - Vercel will redeploy automatically.
+2. Run `migration_v2.sql` through `migration_v8.sql` - each in its own
+   query, in that exact order (v2, v3, v4, v5, v6, v7, v8).
+3. **Also run this one-liner if you ever saw a "profiles_status_check"
+   error when pausing someone** (fixes a constraint some early
+   deployments were missing):
+   ```sql
+   alter table public.profiles drop constraint if exists profiles_status_check;
+   alter table public.profiles add constraint profiles_status_check
+     check (status in ('pending', 'approved', 'rejected', 'paused'));
+   ```
+4. Push this code to GitHub as normal - Vercel will redeploy automatically.
+
+### What's new in v8
+- **Multiple, independent roles per person.** The old single "role"
+  (Sales Person *or* Admin) is now two separate checkboxes - Sales
+  Person and Admin - that can both be checked on the same account. That
+  person then sees both dashboards, with a link in each to switch to
+  the other.
+- **Any Admin can promote or demote any other profile**, including
+  granting/removing Admin rights - there's no special "super admin";
+  all Admins have equal, symmetric rights. (An Admin can't remove their
+  *own* Admin checkbox, to prevent accidentally locking themselves out.)
+- **Approving a pending request now lets you choose the role(s)**
+  (Sales Person and/or Admin) right there, instead of always defaulting
+  to Sales Person.
 
 ### What's new in v7
-- **Self-service profile editing.** A sales person can now update their
-  own Full Name, Phone Number, Branch/Region, and Employee ID directly
-  from a new "My Profile" page - no Admin needed for routine changes.
-- **Email changes require Admin approval.** Requesting a new email
-  locks the account out of every edit (profile, targets, and daily
-  entries) until an Admin approves or rejects it from the "Team &
-  Requests" page. Approving updates their profile email; note that
-  Supabase's own confirmation link (sent to the new address) is the
-  separate, standard step that actually updates their login credential.
-- **A paused account is fully frozen** - it was already blocked from
-  entries and login; now it's also blocked from editing its own
-  profile, at the database level (not just hidden in the UI).
-- **Analytics chart fixes**: the Region/Branch chart (which broke with
-  negative values as a pie chart) is now a bar chart. Charts also
-  gained a zero reference line and horizontal scrolling when there are
-  many sales people, instead of squeezing everyone into a tiny space.
+- **Self-service profile editing** (My Profile page) for name, phone,
+  branch/region, and employee ID.
+- **Email changes require Admin approval** and lock the account out of
+  all edits until resolved.
+- **A paused account is fully frozen**, including profile edits, at the
+  database level.
 
 ### What's new in v6
-- Fixed the Region/Branch analytics chart to handle negative Net Sales
-  correctly (bar chart instead of pie chart).
-- A sales person can now set/edit their own Opening Dues, Sales Target,
-  and Collection Target directly from their dashboard ("Edit My
-  Targets"), not just an Admin.
+- Fixed the Region/Branch analytics chart for negative values.
+- A sales person can set/edit their own Opening Dues, Sales Target, and
+  Collection Target directly from their dashboard.
 
 ## Extending later
 
