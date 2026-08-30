@@ -55,7 +55,10 @@ create table if not exists public.daily_entries (
   remarks text default '',
   net_sales numeric generated always as (sales - sales_return) stored,
   collection_gap numeric generated always as (sales - collections) stored,
-  edit_count integer not null default 0,
+  -- Per-field edit counters, e.g. {"sales":0,"collections":2,"sales_return":1,"remarks":0}
+  -- Only the exact field that changes gets its counter bumped, so the UI
+  -- can highlight just that one cell in red - not the whole row.
+  field_edits jsonb not null default '{"sales":0,"collections":0,"sales_return":0,"remarks":0}'::jsonb,
   last_edited_at timestamptz,
   last_edited_by uuid references public.profiles(id),
   created_at timestamptz default now(),
@@ -63,23 +66,46 @@ create table if not exists public.daily_entries (
 );
 
 -- Whenever a daily entry's real data changes (not a no-op re-save of the
--- same numbers), bump the edit counter and record who did it - whether
--- that's the sales person themselves or an Admin editing on their behalf.
+-- same numbers), bump ONLY the counter(s) for the field(s) that actually
+-- changed, and record who did it - whether that's the sales person
+-- themselves or an Admin editing on their behalf.
 create or replace function public.track_daily_entry_edit()
 returns trigger
 language plpgsql
 as $$
+declare
+  fe jsonb;
+  changed boolean := false;
 begin
-  if (old.sales is distinct from new.sales)
-     or (old.collections is distinct from new.collections)
-     or (old.sales_return is distinct from new.sales_return)
-     or (old.remarks is distinct from new.remarks) then
-    new.edit_count := old.edit_count + 1;
+  fe := coalesce(old.field_edits, '{"sales":0,"collections":0,"sales_return":0,"remarks":0}'::jsonb);
+
+  if old.sales is distinct from new.sales then
+    fe := jsonb_set(fe, '{sales}', to_jsonb(coalesce((fe->>'sales')::int, 0) + 1));
+    changed := true;
+  end if;
+
+  if old.collections is distinct from new.collections then
+    fe := jsonb_set(fe, '{collections}', to_jsonb(coalesce((fe->>'collections')::int, 0) + 1));
+    changed := true;
+  end if;
+
+  if old.sales_return is distinct from new.sales_return then
+    fe := jsonb_set(fe, '{sales_return}', to_jsonb(coalesce((fe->>'sales_return')::int, 0) + 1));
+    changed := true;
+  end if;
+
+  if old.remarks is distinct from new.remarks then
+    fe := jsonb_set(fe, '{remarks}', to_jsonb(coalesce((fe->>'remarks')::int, 0) + 1));
+    changed := true;
+  end if;
+
+  new.field_edits := fe;
+
+  if changed then
     new.last_edited_at := now();
     new.last_edited_by := auth.uid();
-  else
-    new.edit_count := old.edit_count;
   end if;
+
   return new;
 end;
 $$;
