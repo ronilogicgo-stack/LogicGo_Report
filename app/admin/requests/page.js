@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabaseClient";
 
 export default function TeamManagementPage() {
@@ -8,6 +8,7 @@ export default function TeamManagementPage() {
   const [myId, setMyId] = useState(null);
   const [pending, setPending] = useState([]);
   const [team, setTeam] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -199,6 +200,15 @@ export default function TeamManagementPage() {
     load();
   }
 
+  const filteredTeam = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return team;
+    return team.filter(
+      (p) =>
+        p.full_name?.toLowerCase().includes(q) || p.email?.toLowerCase().includes(q)
+    );
+  }, [team, searchQuery]);
+
   function startEdit(person) {
     setEditingId(person.id);
     setEditForm({
@@ -308,14 +318,25 @@ export default function TeamManagementPage() {
 
       {/* ---------- TEAM (always visible - Sales Persons and/or Admins) ---------- */}
       <div className="space-y-3">
-        <h2 className="text-lg font-bold">Team</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h2 className="text-lg font-bold">Team</h2>
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border rounded-lg px-3 py-2 text-sm w-full sm:w-64"
+          />
+        </div>
         {loading ? (
           <p className="text-gray-500">Loading...</p>
         ) : team.length === 0 ? (
           <p className="text-gray-500">No approved team members yet.</p>
+        ) : filteredTeam.length === 0 ? (
+          <p className="text-gray-500">No team members match "{searchQuery}".</p>
         ) : (
           <div className="space-y-3">
-            {team.map((p) => (
+            {filteredTeam.map((p) => (
               <div key={p.id} className="bg-white rounded-xl shadow p-4 space-y-3">
                 {p.email_change_pending && (
                   <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

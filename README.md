@@ -75,6 +75,23 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v15
+- **Forgot Password.** A "Forgot password?" link on the login page lets
+  anyone request a reset email, then set a new password - a real gap
+  before this (there was no recovery path at all if someone forgot
+  their password).
+- **Search box on the Team page**, filtering by name or email - useful
+  once the team grows past a handful of people.
+
+### One-time setup for v15
+Supabase's password-reset emails redirect back to your app at
+`/reset-password`. Add that URL to the allow-list:
+1. Supabase -> **Authentication -> URL Configuration**.
+2. Under "Redirect URLs", add: `https://YOUR-APP-URL.vercel.app/reset-password`
+   (use your real Vercel URL - and add `http://localhost:3000/reset-password`
+   too if you test locally).
+3. Save. No SQL migration is needed for this version.
+
 ## What's new in v14
 - **Bug fixes from a full audit**: the Admin dashboard's "Edit Targets"
   save button now shows an error if it fails (it used to fail silently);
