@@ -75,6 +75,31 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v14
+- **Bug fixes from a full audit**: the Admin dashboard's "Edit Targets"
+  save button now shows an error if it fails (it used to fail silently);
+  the Analytics CSV export no longer risks mixing up two people who
+  happen to share the same name (it now matches by their unique ID
+  instead of their name); removed a leftover unused import. All
+  calculation formulas (Net Sales, Collection Gap, Dues Recovery,
+  Closing Dues) were re-verified for consistency across every page -
+  no mismatches found.
+- **Company logo** (Admin -> "Settings"). Upload once and it shows in
+  the navigation bar on every page, for both Admins and Sales Persons.
+- **Profile photos** (Sales Person -> "My Profile"). Each sales person
+  can upload their own photo, shown in the navbar, the Team list, and
+  their individual detail page (falls back to a colored initial if no
+  photo is set).
+- **Colorful redesign**: navigation bars now use an indigo-to-purple
+  gradient with the logo/avatar built in; the login and signup pages
+  got a matching gradient background and rounder, more polished cards.
+
+### One-time setup for v14 (do this in addition to the SQL migration)
+This version adds file uploads (logo + photos), which need two Storage
+buckets. `migration_v14.sql` creates them automatically - just run it
+like any other migration in the Supabase SQL Editor. No extra manual
+bucket setup is needed.
+
 ## What's new in v13
 - **CSV and PDF export everywhere.** Every report page - the Admin's
   Monthly dashboard, Daily Report, an individual employee's detail

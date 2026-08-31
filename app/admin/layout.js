@@ -10,6 +10,7 @@ export default function AdminLayout({ children }) {
   const supabase = createClient();
   const [checked, setChecked] = useState(false);
   const [alsoSalesPerson, setAlsoSalesPerson] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(null);
 
   useEffect(() => {
     async function check() {
@@ -33,6 +34,13 @@ export default function AdminLayout({ children }) {
         return;
       }
 
+      const { data: settings } = await supabase
+        .from("app_settings")
+        .select("logo_url")
+        .eq("id", true)
+        .maybeSingle();
+      setLogoUrl(settings?.logo_url || null);
+
       setAlsoSalesPerson(!!profile.is_sales_person);
       setChecked(true);
     }
@@ -53,41 +61,61 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen">
-      <nav className="bg-white border-b px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
+    <div className="min-h-screen bg-gray-50">
+      <nav className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-md px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-          <span className="font-bold whitespace-nowrap">Sales Tracker · Admin</span>
-          <Link href="/admin" className="text-sm text-gray-600 hover:text-black">
+          <div className="flex items-center gap-2">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className="h-8 w-8 rounded-md object-cover bg-white"
+              />
+            ) : null}
+            <span className="font-bold text-white whitespace-nowrap">
+              Sales Tracker · Admin
+            </span>
+          </div>
+          <Link href="/admin" className="text-sm text-indigo-100 hover:text-white">
             Dashboard
           </Link>
           <Link
             href="/admin/daily-report"
-            className="text-sm text-gray-600 hover:text-black"
+            className="text-sm text-indigo-100 hover:text-white"
           >
             Daily Report
           </Link>
           <Link
             href="/admin/requests"
-            className="text-sm text-gray-600 hover:text-black"
+            className="text-sm text-indigo-100 hover:text-white"
           >
             Team &amp; Requests
           </Link>
           <Link
             href="/admin/analytics"
-            className="text-sm text-gray-600 hover:text-black"
+            className="text-sm text-indigo-100 hover:text-white"
           >
             Analytics
+          </Link>
+          <Link
+            href="/admin/settings"
+            className="text-sm text-indigo-100 hover:text-white"
+          >
+            Settings
           </Link>
           {alsoSalesPerson && (
             <Link
               href="/dashboard"
-              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+              className="text-sm bg-white/20 text-white px-2.5 py-1 rounded-full font-medium hover:bg-white/30"
             >
               My Sales Dashboard →
             </Link>
           )}
         </div>
-        <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-black">
+        <button
+          onClick={handleLogout}
+          className="text-sm text-indigo-100 hover:text-white"
+        >
           Log out
         </button>
       </nav>

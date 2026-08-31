@@ -271,6 +271,69 @@ create policy "entries: admin can update any entries"
   on public.daily_entries for update
   using (public.is_admin());
 
+-- ---------------------------------------------------------------------
+-- 4. APP SETTINGS (company-wide, single row) - brand logo
+-- ---------------------------------------------------------------------
+alter table public.profiles add column if not exists avatar_url text;
+
+create table if not exists public.app_settings (
+  id boolean primary key default true,
+  logo_url text,
+  constraint app_settings_singleton check (id = true)
+);
+insert into public.app_settings (id) values (true) on conflict (id) do nothing;
+
+alter table public.app_settings enable row level security;
+
+create policy "app_settings: anyone can read"
+  on public.app_settings for select
+  using (true);
+
+create policy "app_settings: admin can update"
+  on public.app_settings for update
+  using (public.is_admin());
+
+-- ---------------------------------------------------------------------
+-- 5. STORAGE BUCKETS - avatars (self photo) and branding (company logo)
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('branding', 'branding', true)
+on conflict (id) do nothing;
+
+create policy "avatars: users can upload own avatar"
+  on storage.objects for insert
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "avatars: users can update own avatar"
+  on storage.objects for update
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "avatars: users can delete own avatar"
+  on storage.objects for delete
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "avatars: admin can manage any avatar"
+  on storage.objects for all
+  using (bucket_id = 'avatars' and public.is_admin())
+  with check (bucket_id = 'avatars' and public.is_admin());
+
+create policy "avatars: anyone can view avatars"
+  on storage.objects for select
+  using (bucket_id = 'avatars');
+
+create policy "branding: admin can manage logo"
+  on storage.objects for all
+  using (bucket_id = 'branding' and public.is_admin())
+  with check (bucket_id = 'branding' and public.is_admin());
+
+create policy "branding: anyone can view logo"
+  on storage.objects for select
+  using (bucket_id = 'branding');
+
 -- =====================================================================
 -- MAKE THE FIRST ADMIN
 -- After you sign up once through the app's /signup page, run this

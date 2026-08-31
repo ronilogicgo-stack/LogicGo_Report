@@ -61,14 +61,14 @@ function SignupForm() {
 
   if (isPending || done) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-white rounded-xl shadow p-8 space-y-4 text-center">
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 space-y-4 text-center">
           <h1 className="text-xl font-bold">Request Sent</h1>
           <p className="text-gray-500 text-sm">
             Your access request has been sent. An admin needs to approve it
             before you can log in. Please check back later.
           </p>
-          <Link href="/login" className="text-black font-medium underline text-sm">
+          <Link href="/login" className="text-indigo-600 font-medium underline text-sm">
             Back to login
           </Link>
         </div>
@@ -77,10 +77,10 @@ function SignupForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500">
       <form
         onSubmit={handleSignup}
-        className="w-full max-w-sm bg-white rounded-xl shadow p-8 space-y-4"
+        className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8 space-y-4"
       >
         <h1 className="text-2xl font-bold text-center">Request Access</h1>
         <p className="text-sm text-gray-500 text-center">
@@ -126,14 +126,14 @@ function SignupForm() {
 
         <button
           disabled={loading}
-          className="w-full bg-black text-white rounded-lg py-2 font-medium disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg py-2 font-medium disabled:opacity-50 hover:opacity-90 transition"
         >
           {loading ? "Sending..." : "Send Request"}
         </button>
 
         <p className="text-sm text-center text-gray-500">
           Already approved?{" "}
-          <Link href="/login" className="text-black font-medium underline">
+          <Link href="/login" className="text-indigo-600 font-medium underline">
             Sign in
           </Link>
         </p>

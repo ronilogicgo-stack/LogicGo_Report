@@ -101,7 +101,9 @@ export default function AnalyticsPage() {
     }
     return Object.entries(totals)
       .map(([userId, net]) => ({
+        userId,
         name: peopleById[userId]?.full_name || "Unknown",
+        region: peopleById[userId]?.location || "",
         net,
       }))
       .sort((a, b) => b.net - a.net);
@@ -134,10 +136,7 @@ export default function AnalyticsPage() {
 
   function exportCSV() {
     const headers = ["Sales Person", "Region", "Net Sales"];
-    const csvRows = byPerson.map((p) => {
-      const region = people.find((x) => x.full_name === p.name)?.location || "";
-      return [p.name, region, p.net];
-    });
+    const csvRows = byPerson.map((p) => [p.name, p.region, p.net]);
     downloadCSV(`analytics_${from}_to_${to}.csv`, headers, csvRows);
   }
 

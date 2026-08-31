@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabaseClient";
+import ImageUploader from "@/components/ImageUploader";
 
 export default function MyProfilePage() {
   const supabase = createClient();
@@ -116,6 +117,30 @@ export default function MyProfilePage() {
   return (
     <div className="max-w-lg space-y-6">
       <h1 className="text-lg sm:text-xl font-bold">My Profile</h1>
+
+      <div className="bg-white rounded-xl shadow p-4 sm:p-6">
+        <h2 className="font-semibold text-sm mb-3">Profile Photo</h2>
+        {profile?.email_change_pending ? (
+          <p className="text-sm text-gray-400">
+            Locked until your pending email change is resolved.
+          </p>
+        ) : (
+          <ImageUploader
+            bucket="avatars"
+            path={`${profile?.id}/avatar`}
+            currentUrl={profile?.avatar_url}
+            label="Change Photo"
+            onUploaded={async (url) => {
+              const { error } = await supabase
+                .from("profiles")
+                .update({ avatar_url: url })
+                .eq("id", profile.id);
+              if (error) alert(`Could not save photo: ${error.message}`);
+              load();
+            }}
+          />
+        )}
+      </div>
 
       {profile?.email_change_pending && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 text-sm">

@@ -420,26 +420,39 @@ export default function TeamManagementPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold">{p.full_name}</p>
-                        <StatusBadge status={p.status} />
-                        {p.is_sales_person && <RoleBadge label="Sales Person" />}
-                        {p.is_admin && <RoleBadge label="Admin" color="indigo" />}
-                      </div>
-                      <p className="text-sm text-gray-500">{p.email}</p>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
-                        <span>📞 {p.phone || "-"}</span>
-                        <span>📍 {p.location || "-"}</span>
-                        <span>🆔 {p.employee_code || "-"}</span>
-                        {p.is_sales_person && (
-                          <span>
-                            🗓 Last report:{" "}
-                            <span className={p.last_report ? "" : "text-gray-400"}>
-                              {p.last_report || "never"}
+                    <div className="flex items-start gap-3">
+                      {p.avatar_url ? (
+                        <img
+                          src={p.avatar_url}
+                          alt=""
+                          className="h-10 w-10 rounded-full object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-semibold shrink-0">
+                          {p.full_name?.[0]?.toUpperCase() || "?"}
+                        </div>
+                      )}
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold">{p.full_name}</p>
+                          <StatusBadge status={p.status} />
+                          {p.is_sales_person && <RoleBadge label="Sales Person" />}
+                          {p.is_admin && <RoleBadge label="Admin" color="indigo" />}
+                        </div>
+                        <p className="text-sm text-gray-500">{p.email}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
+                          <span>📞 {p.phone || "-"}</span>
+                          <span>📍 {p.location || "-"}</span>
+                          <span>🆔 {p.employee_code || "-"}</span>
+                          {p.is_sales_person && (
+                            <span>
+                              🗓 Last report:{" "}
+                              <span className={p.last_report ? "" : "text-gray-400"}>
+                                {p.last_report || "never"}
+                              </span>
                             </span>
-                          </span>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-4">

@@ -77,7 +77,7 @@ export default function AdminDashboard() {
   }
 
   async function saveTarget(userId) {
-    await supabase.from("monthly_targets").upsert(
+    const { error } = await supabase.from("monthly_targets").upsert(
       {
         user_id: userId,
         month,
@@ -87,6 +87,10 @@ export default function AdminDashboard() {
       },
       { onConflict: "user_id,month" }
     );
+    if (error) {
+      alert(`Could not save targets: ${error.message}`);
+      return;
+    }
     setEditingId(null);
     load();
   }

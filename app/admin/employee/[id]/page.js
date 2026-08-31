@@ -29,7 +29,7 @@ export default function EmployeeDetailPage() {
 
     const { data: p } = await supabase
       .from("profiles")
-      .select("id, full_name, location, status, email")
+      .select("id, full_name, location, status, email, avatar_url")
       .eq("id", employeeId)
       .single();
     setPerson(p);
@@ -92,13 +92,26 @@ export default function EmployeeDetailPage() {
           ← Back to Dashboard
         </button>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold">
-              {person?.full_name || "Loading..."}
-            </h1>
-            <p className="text-sm text-gray-500">
-              {person?.location} · {person?.email}
-            </p>
+          <div className="flex items-center gap-3">
+            {person?.avatar_url ? (
+              <img
+                src={person.avatar_url}
+                alt=""
+                className="h-12 w-12 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-semibold text-lg">
+                {person?.full_name?.[0]?.toUpperCase() || "?"}
+              </div>
+            )}
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold">
+                {person?.full_name || "Loading..."}
+              </h1>
+              <p className="text-sm text-gray-500">
+                {person?.location} · {person?.email}
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <input
