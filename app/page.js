@@ -10,10 +10,20 @@ export default function Home() {
   useEffect(() => {
     const supabase = createClient();
 
-    async function redirect() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    // Everything routes through this single listener (instead of a
+    // separate getSession() call) so there's no race between a normal
+    // "not logged in -> /login" redirect and Supabase's own
+    // PASSWORD_RECOVERY event, which needs a moment to parse the
+    // recovery link's token out of the URL first.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        router.replace("/reset-password");
+        return;
+      }
+
+      if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN") return;
 
       if (!session) {
         router.replace("/login");
@@ -35,9 +45,9 @@ export default function Home() {
       } else {
         router.replace("/signup?pending=1");
       }
-    }
+    });
 
-    redirect();
+    return () => subscription.unsubscribe();
   }, [router]);
 
   return (

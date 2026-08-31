@@ -34,6 +34,22 @@ function LoginForm() {
       .eq("id", true)
       .maybeSingle()
       .then(({ data }) => setLogoUrl(data?.logo_url || null));
+
+    // Supabase's password-reset email link sometimes lands the browser
+    // here (on /login) instead of directly on /reset-password, because
+    // of how it verifies the token before redirecting. Listening for
+    // Supabase's own PASSWORD_RECOVERY event - which fires the moment
+    // it detects a valid recovery link, no matter which page it landed
+    // on - is the officially recommended way to catch this reliably and
+    // send the person to the right place automatically.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        router.push("/reset-password");
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   async function handleLogin(e) {
