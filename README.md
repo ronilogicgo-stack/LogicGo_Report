@@ -75,6 +75,17 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v11
+- **Chart on the Daily Report page**: a colorful bar chart showing Net
+  Sales by Sales Person for whatever date is selected.
+- **Monthly Sales Forecast**: based on the daily average achieved so
+  far this month (up to the selected date), the app projects what the
+  full month's total would be if that same pace continued - shown as
+  headline numbers and a stacked bar chart per sales person ("Achieved
+  So Far" vs "Projected Remaining"). This is a simple run-rate
+  projection, not a guarantee - it updates automatically as more days
+  of real data come in.
+
 ## What's new in v10
 - **Permanently delete an employee's account** (Admin -> "Team &
   Requests" -> "Delete Account"). This removes their login credentials,

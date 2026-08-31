@@ -1,15 +1,38 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  Cell,
+  Legend,
+  ReferenceLine,
+} from "recharts";
 import { createClient } from "@/lib/supabaseClient";
-import { netSales, dailyCollectionGap, fmt, dateKey } from "@/lib/calculations";
+import {
+  netSales,
+  dailyCollectionGap,
+  fmt,
+  dateKey,
+  monthStartFor,
+  daysInMonthFor,
+  dayOfMonthFor,
+  CHART_COLORS,
+} from "@/lib/calculations";
 
 export default function DailyReportPage() {
   const supabase = createClient();
   const [date, setDate] = useState(dateKey());
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [forecast, setForecast] = useState({ perPerson: [], daysElapsed: 0, daysInMonth: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27,6 +50,7 @@ export default function DailyReportPage() {
 
     if (!people || people.length === 0) {
       setRows([]);
+      setForecast({ perPerson: [], daysElapsed: 0, daysInMonth: 0 });
       setLoading(false);
       return;
     }
@@ -60,6 +84,35 @@ export default function DailyReportPage() {
     });
 
     setRows(built);
+
+    // --- Monthly forecast: how much would this month total if the
+    // month-to-date daily rate (up to the selected date) continued for
+    // every remaining day of the month. ---
+    const monthStart = monthStartFor(date);
+    const daysElapsed = dayOfMonthFor(date);
+    const daysInMonth = daysInMonthFor(date);
+
+    const { data: monthEntries } = await supabase
+      .from("daily_entries")
+      .select("user_id, net_sales")
+      .in("user_id", ids)
+      .gte("entry_date", monthStart)
+      .lte("entry_date", date);
+
+    const soFarByUser = {};
+    for (const e of monthEntries || []) {
+      soFarByUser[e.user_id] = (soFarByUser[e.user_id] || 0) + (Number(e.net_sales) || 0);
+    }
+
+    const perPerson = people.map((person) => {
+      const soFar = soFarByUser[person.id] || 0;
+      const dailyAvg = daysElapsed > 0 ? soFar / daysElapsed : 0;
+      const projectedTotal = dailyAvg * daysInMonth;
+      const projectedRemaining = Math.max(0, projectedTotal - soFar);
+      return { name: person.full_name, soFar, projectedTotal, projectedRemaining };
+    });
+
+    setForecast({ perPerson, daysElapsed, daysInMonth });
     setLoading(false);
   }, [date, supabase]);
 
@@ -78,6 +131,17 @@ export default function DailyReportPage() {
     },
     { sales: 0, collections: 0, gap: 0, salesReturn: 0, netSales: 0 }
   );
+
+  const forecastTotals = useMemo(() => {
+    return forecast.perPerson.reduce(
+      (acc, p) => {
+        acc.soFar += p.soFar;
+        acc.projectedTotal += p.projectedTotal;
+        return acc;
+      },
+      { soFar: 0, projectedTotal: 0 }
+    );
+  }, [forecast]);
 
   return (
     <div className="space-y-4">
@@ -202,8 +266,118 @@ export default function DailyReportPage() {
               </div>
             </div>
           </div>
+
+          {/* ---------- CHART: Net Sales by Sales Person (this day) ---------- */}
+          <div className="bg-white rounded-xl shadow p-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              Net Sales by Sales Person - {date}
+            </h3>
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: Math.max(400, rows.length * 90) }}>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart
+                    data={rows.map((r) => ({ name: r.person.full_name, net: r.netSales }))}
+                    margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={55} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <ReferenceLine y={0} stroke="#cbd5e1" />
+                    <Tooltip formatter={(v) => fmt(v)} />
+                    <Bar dataKey="net" radius={[6, 6, 6, 6]} maxBarSize={56}>
+                      {rows.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            {rows.length > 4 && (
+              <p className="text-xs text-gray-400 mt-1">← scroll to see everyone →</p>
+            )}
+          </div>
+
+          {/* ---------- MONTHLY FORECAST ---------- */}
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold">
+              Monthly Forecast{" "}
+              <span className="text-sm font-normal text-gray-400">
+                (if this rate continues all month)
+              </span>
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <ForecastCard
+                label="Net Sales So Far This Month"
+                value={fmt(forecastTotals.soFar)}
+                color="bg-gradient-to-br from-slate-600 to-slate-800"
+              />
+              <ForecastCard
+                label="Projected Month Total"
+                value={fmt(forecastTotals.projectedTotal)}
+                color="bg-gradient-to-br from-indigo-500 to-indigo-700"
+              />
+              <ForecastCard
+                label="Days Elapsed"
+                value={`${forecast.daysElapsed} / ${forecast.daysInMonth} days`}
+                color="bg-gradient-to-br from-emerald-500 to-emerald-700"
+              />
+            </div>
+
+            <div className="bg-white rounded-xl shadow p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                Achieved So Far vs Projected Remaining (per Sales Person)
+              </h3>
+              <div className="overflow-x-auto">
+                <div style={{ minWidth: Math.max(400, forecast.perPerson.length * 100) }}>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart
+                      data={forecast.perPerson}
+                      margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={55} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(v) => fmt(v)} />
+                      <Legend />
+                      <Bar
+                        dataKey="soFar"
+                        name="Achieved So Far"
+                        stackId="a"
+                        fill="#6366f1"
+                        radius={[0, 0, 0, 0]}
+                        maxBarSize={56}
+                      />
+                      <Bar
+                        dataKey="projectedRemaining"
+                        name="Projected Remaining"
+                        stackId="a"
+                        fill="#c7d2fe"
+                        radius={[6, 6, 0, 0]}
+                        maxBarSize={56}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Light shade = projected extra sales if the current daily average
+                continues for the rest of the month.
+              </p>
+            </div>
+          </div>
         </>
       )}
+    </div>
+  );
+}
+
+function ForecastCard({ label, value, color }) {
+  return (
+    <div className={`rounded-xl shadow p-4 text-white ${color}`}>
+      <p className="text-xs text-white/80">{label}</p>
+      <p className="text-lg font-bold mt-1">{value}</p>
     </div>
   );
 }
