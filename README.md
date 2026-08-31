@@ -75,6 +75,34 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v10
+- **Permanently delete an employee's account** (Admin -> "Team &
+  Requests" -> "Delete Account"). This removes their login credentials,
+  profile, and every daily entry and target - completely, from
+  everywhere. It requires typing their name to confirm, since it can't
+  be undone.
+- **Download their data first.** A "Download Data" button exports that
+  person's full entry history as a CSV file before you delete anything.
+- **Freed email addresses can be reused.** Because deletion removes the
+  actual Supabase Auth login record (not just our app's profile row),
+  someone can sign up again later with that same email address.
+- **New required setup step**: this feature needs a Supabase **Service
+  Role key** (see "1a" below) - it's the only feature in the app that
+  needs elevated, server-side database access, kept safely out of the
+  browser.
+
+### One-time setup for account deletion (do this once)
+1. In Supabase -> **Settings -> API**, copy the **`service_role`** key
+   (NOT the `anon` key - this one is secret and powerful).
+2. In Vercel -> your project -> **Settings -> Environment Variables**,
+   add a new variable:
+   - Name: `SUPABASE_SERVICE_ROLE_KEY`
+   - Value: (the key you copied)
+   - **Do not** prefix it with `NEXT_PUBLIC_` - that would expose it to
+     every visitor's browser, which would let anyone take over your
+     entire database. Vercel keeps non-prefixed variables server-only.
+3. Redeploy.
+
 ## What's new in v9
 - **Daily Report page** (Admin -> "Daily Report") - mirrors your
   spreadsheet's "Daily Sales & Collection Summary" tab exactly: pick

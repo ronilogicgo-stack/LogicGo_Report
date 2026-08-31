@@ -137,6 +137,68 @@ export default function TeamManagementPage() {
     load();
   }
 
+  async function downloadData(person) {
+    const { data: entries } = await supabase
+      .from("daily_entries")
+      .select(
+        "entry_date, sales, collections, sales_return, net_sales, collection_gap, remarks"
+      )
+      .eq("user_id", person.id)
+      .order("entry_date", { ascending: true });
+
+    const header =
+      "Date,Sales,Collections,Sales Return,Net Sales,Collection Gap,Remarks\n";
+    const rows = (entries || [])
+      .map(
+        (e) =>
+          `${e.entry_date},${e.sales},${e.collections},${e.sales_return},${e.net_sales},${e.collection_gap},"${(
+            e.remarks || ""
+          ).replace(/"/g, '""')}"`
+      )
+      .join("\n");
+    const csv = header + rows;
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${person.full_name.replace(/\s+/g, "_")}_data.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function deleteAccount(person) {
+    const typed = prompt(
+      `This will PERMANENTLY delete ${person.full_name}'s account and ALL their data (entries, targets, profile). This cannot be undone.\n\nMake sure you've downloaded their data first if you need it.\n\nType their name exactly to confirm: "${person.full_name}"`
+    );
+    if (typed !== person.full_name) {
+      if (typed !== null) alert("Name did not match. Deletion cancelled.");
+      return;
+    }
+
+    setBusyId(person.id);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const res = await fetch("/api/admin/delete-employee", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ userId: person.id }),
+    });
+    const result = await res.json();
+    setBusyId(null);
+
+    if (!res.ok) {
+      alert(`Could not delete: ${result.error}`);
+      return;
+    }
+    load();
+  }
+
   function startEdit(person) {
     setEditingId(person.id);
     setEditForm({
@@ -380,7 +442,7 @@ export default function TeamManagementPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-4">
                       <button
                         onClick={() => startEdit(p)}
                         className="text-sm text-blue-600 underline"
@@ -396,6 +458,21 @@ export default function TeamManagementPage() {
                           }`}
                         >
                           {p.status === "paused" ? "Resume Access" : "Pause Access"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => downloadData(p)}
+                        className="text-sm text-gray-600 underline"
+                      >
+                        Download Data
+                      </button>
+                      {p.id !== myId && (
+                        <button
+                          disabled={busyId === p.id}
+                          onClick={() => deleteAccount(p)}
+                          className="text-sm text-red-700 underline font-medium"
+                        >
+                          Delete Account
                         </button>
                       )}
                     </div>
