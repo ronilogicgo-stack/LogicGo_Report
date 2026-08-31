@@ -352,6 +352,22 @@ create index if not exists idx_profiles_sales_person_status
 create index if not exists idx_profiles_admin
   on public.profiles (is_admin) where is_admin = true;
 
+-- Pre-summed monthly totals per sales person, so the Admin's main
+-- dashboard fetches one already-totaled row per person instead of
+-- every daily entry for the month.
+create or replace view public.monthly_entry_totals
+with (security_invoker = true) as
+select
+  user_id,
+  date_trunc('month', entry_date)::date as month,
+  sum(sales) as total_sales,
+  sum(collections) as total_collections,
+  sum(sales_return) as total_sales_return,
+  sum(net_sales) as total_net_sales,
+  count(*) as days_reported
+from public.daily_entries
+group by user_id, date_trunc('month', entry_date);
+
 -- =====================================================================
 -- MAKE THE FIRST ADMIN
 -- After you sign up once through the app's /signup page, run this

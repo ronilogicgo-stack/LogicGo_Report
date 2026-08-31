@@ -75,6 +75,14 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v17 (performance, part 2)
+- **Admin's main dashboard is now much lighter.** It used to download
+  every single daily entry for every sales person for the whole month,
+  then add them up in the browser. It now fetches one already-totaled
+  row per person straight from the database (via a new
+  monthly_entry_totals view) - the more months of history a company
+  builds up, the bigger this difference gets.
+
 ## What's new in v16 (performance)
 - **Fixed slow data loading.** Several pages were querying the database
   one request after another (waiting for each to finish before starting

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
-import { summarizeMonth, fmt, monthKey } from "@/lib/calculations";
+import { summarizeFromTotals, fmt, monthKey } from "@/lib/calculations";
 import { downloadCSV } from "@/lib/csv";
 import ExportButtons from "@/components/ExportButtons";
 
@@ -33,28 +33,20 @@ export default function AdminDashboard() {
     }
 
     const ids = people.map((p) => p.id);
-    const monthStart = month;
-    const monthEndDate = new Date(month);
-    monthEndDate.setMonth(monthEndDate.getMonth() + 1);
-    const monthEnd = monthEndDate.toISOString().slice(0, 10);
 
-    // These two queries don't depend on each other - run them at the
-    // same time instead of one after another, so the page loads roughly
-    // twice as fast.
-    const [{ data: targets }, { data: entries }] = await Promise.all([
+    // One row per person already totaled by the database (via the
+    // monthly_entry_totals view) instead of every daily entry for the
+    // whole month - much less data to transfer, and no summing needed
+    // in the browser.
+    const [{ data: targets }, { data: totals }] = await Promise.all([
       supabase.from("monthly_targets").select("*").eq("month", month).in("user_id", ids),
-      supabase
-        .from("daily_entries")
-        .select("*")
-        .in("user_id", ids)
-        .gte("entry_date", monthStart)
-        .lt("entry_date", monthEnd),
+      supabase.from("monthly_entry_totals").select("*").eq("month", month).in("user_id", ids),
     ]);
 
     const built = people.map((person) => {
       const target = targets?.find((t) => t.user_id === person.id);
-      const myEntries = entries?.filter((e) => e.user_id === person.id) || [];
-      const summary = summarizeMonth(myEntries, target);
+      const personTotals = totals?.find((t) => t.user_id === person.id);
+      const summary = summarizeFromTotals(personTotals, target);
       return { person, target, summary };
     });
 
