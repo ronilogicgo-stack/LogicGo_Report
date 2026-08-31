@@ -75,6 +75,14 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v12
+- **Custom date range on the Daily Report page.** Switch between
+  "Single Day" (as before) and "Date Range" - pick any From/To dates
+  (e.g. "the last 3 days") and see combined totals per sales person,
+  plus how many of those days each person actually reported. The chart
+  updates to match; the Monthly Forecast section only applies to the
+  Single Day view, since a forecast needs a specific month context.
+
 ## What's new in v11
 - **Chart on the Daily Report page**: a colorful bar chart showing Net
   Sales by Sales Person for whatever date is selected.

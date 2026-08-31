@@ -28,19 +28,26 @@ import {
 
 export default function DailyReportPage() {
   const supabase = createClient();
+  const [mode, setMode] = useState("single"); // "single" | "range"
   const [date, setDate] = useState(dateKey());
+  const [rangeFrom, setRangeFrom] = useState(dateKey());
+  const [rangeTo, setRangeTo] = useState(dateKey());
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [forecast, setForecast] = useState({ perPerson: [], daysElapsed: 0, daysInMonth: 0 });
 
+  // The effective date range this page is currently showing.
+  const from = mode === "single" ? date : rangeFrom;
+  const to = mode === "single" ? date : rangeTo;
+
   const load = useCallback(async () => {
     setLoading(true);
 
     // Every approved (or paused) sales person always appears here, even
-    // with zero values if they haven't reported this particular day -
-    // and any newly approved sales person shows up automatically the
-    // next time this loads, with no manual setup needed.
+    // with zero values if they haven't reported in this range - and any
+    // newly approved sales person shows up automatically the next time
+    // this loads, with no manual setup needed.
     const { data: people } = await supabase
       .from("profiles")
       .select("id, full_name, location")
@@ -61,60 +68,71 @@ export default function DailyReportPage() {
       .from("daily_entries")
       .select("*")
       .in("user_id", ids)
-      .eq("entry_date", date);
+      .gte("entry_date", from)
+      .lte("entry_date", to);
 
-    const entryByUser = {};
-    for (const e of entries || []) entryByUser[e.user_id] = e;
+    const entriesByUser = {};
+    for (const e of entries || []) {
+      if (!entriesByUser[e.user_id]) entriesByUser[e.user_id] = [];
+      entriesByUser[e.user_id].push(e);
+    }
 
     const built = people.map((person, i) => {
-      const e = entryByUser[person.id];
-      const sales = Number(e?.sales) || 0;
-      const collections = Number(e?.collections) || 0;
-      const salesReturn = Number(e?.sales_return) || 0;
+      const myEntries = entriesByUser[person.id] || [];
+      const sales = myEntries.reduce((s, e) => s + (Number(e.sales) || 0), 0);
+      const collections = myEntries.reduce((s, e) => s + (Number(e.collections) || 0), 0);
+      const salesReturn = myEntries.reduce((s, e) => s + (Number(e.sales_return) || 0), 0);
+      const net = netSales(sales, salesReturn);
       return {
         sl: i + 1,
         person,
         sales,
         collections,
-        gap: e ? Number(e.collection_gap) || 0 : dailyCollectionGap(sales, salesReturn, collections),
+        gap: net - collections,
         salesReturn,
-        netSales: e ? Number(e.net_sales) || 0 : netSales(sales, salesReturn),
-        reported: !!e,
+        netSales: net,
+        reported: myEntries.length > 0,
+        daysReported: myEntries.length,
       };
     });
 
     setRows(built);
 
-    // --- Monthly forecast: how much would this month total if the
-    // month-to-date daily rate (up to the selected date) continued for
-    // every remaining day of the month. ---
-    const monthStart = monthStartFor(date);
-    const daysElapsed = dayOfMonthFor(date);
-    const daysInMonth = daysInMonthFor(date);
+    // --- Monthly forecast (only meaningful for a single selected day):
+    // how much would this month total if the month-to-date daily rate
+    // (up to that day) continued for every remaining day of the month.
+    if (mode === "single") {
+      const monthStart = monthStartFor(date);
+      const daysElapsed = dayOfMonthFor(date);
+      const daysInMonth = daysInMonthFor(date);
 
-    const { data: monthEntries } = await supabase
-      .from("daily_entries")
-      .select("user_id, net_sales")
-      .in("user_id", ids)
-      .gte("entry_date", monthStart)
-      .lte("entry_date", date);
+      const { data: monthEntries } = await supabase
+        .from("daily_entries")
+        .select("user_id, net_sales")
+        .in("user_id", ids)
+        .gte("entry_date", monthStart)
+        .lte("entry_date", date);
 
-    const soFarByUser = {};
-    for (const e of monthEntries || []) {
-      soFarByUser[e.user_id] = (soFarByUser[e.user_id] || 0) + (Number(e.net_sales) || 0);
+      const soFarByUser = {};
+      for (const e of monthEntries || []) {
+        soFarByUser[e.user_id] = (soFarByUser[e.user_id] || 0) + (Number(e.net_sales) || 0);
+      }
+
+      const perPerson = people.map((person) => {
+        const soFar = soFarByUser[person.id] || 0;
+        const dailyAvg = daysElapsed > 0 ? soFar / daysElapsed : 0;
+        const projectedTotal = dailyAvg * daysInMonth;
+        const projectedRemaining = Math.max(0, projectedTotal - soFar);
+        return { name: person.full_name, soFar, projectedTotal, projectedRemaining };
+      });
+
+      setForecast({ perPerson, daysElapsed, daysInMonth });
+    } else {
+      setForecast({ perPerson: [], daysElapsed: 0, daysInMonth: 0 });
     }
 
-    const perPerson = people.map((person) => {
-      const soFar = soFarByUser[person.id] || 0;
-      const dailyAvg = daysElapsed > 0 ? soFar / daysElapsed : 0;
-      const projectedTotal = dailyAvg * daysInMonth;
-      const projectedRemaining = Math.max(0, projectedTotal - soFar);
-      return { name: person.full_name, soFar, projectedTotal, projectedRemaining };
-    });
-
-    setForecast({ perPerson, daysElapsed, daysInMonth });
     setLoading(false);
-  }, [date, supabase]);
+  }, [mode, date, rangeFrom, rangeTo, supabase]);
 
   useEffect(() => {
     load();
@@ -147,13 +165,69 @@ export default function DailyReportPage() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg sm:text-xl font-bold">Daily Sales &amp; Collections Report</h1>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="border rounded-lg px-3 py-2 w-full sm:w-auto"
-        />
+        <div className="flex bg-white border rounded-lg p-1 w-full sm:w-auto">
+          <button
+            onClick={() => setMode("single")}
+            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium ${
+              mode === "single" ? "bg-black text-white" : "text-gray-600"
+            }`}
+          >
+            Single Day
+          </button>
+          <button
+            onClick={() => setMode("range")}
+            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium ${
+              mode === "range" ? "bg-black text-white" : "text-gray-600"
+            }`}
+          >
+            Date Range
+          </button>
+        </div>
       </div>
+
+      {mode === "single" ? (
+        <div className="flex justify-end">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="border rounded-lg px-3 py-2 w-full sm:w-auto"
+          />
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl shadow p-4">
+          <label className="text-sm text-gray-500">
+            From
+            <input
+              type="date"
+              value={rangeFrom}
+              max={rangeTo}
+              onChange={(e) => setRangeFrom(e.target.value)}
+              className="ml-2 border rounded-lg px-2 py-1"
+            />
+          </label>
+          <label className="text-sm text-gray-500">
+            To
+            <input
+              type="date"
+              value={rangeTo}
+              min={rangeFrom}
+              onChange={(e) => setRangeTo(e.target.value)}
+              className="ml-2 border rounded-lg px-2 py-1"
+            />
+          </label>
+        </div>
+      )}
+
+      <p className="text-sm text-gray-500">
+        Showing <span className="font-medium">{from}</span>
+        {from !== to && (
+          <>
+            {" "}
+            to <span className="font-medium">{to}</span>
+          </>
+        )}
+      </p>
 
       {loading ? (
         <p className="text-gray-500">Loading...</p>
@@ -169,6 +243,7 @@ export default function DailyReportPage() {
                   <th className="p-3">SL</th>
                   <th className="p-3">Sales Person</th>
                   <th className="p-3">Location</th>
+                  {mode === "range" && <th className="p-3 text-right">Days Reported</th>}
                   <th className="p-3 text-right">Sales Achievement</th>
                   <th className="p-3 text-right">Collections Achievement</th>
                   <th className="p-3 text-right">Gap</th>
@@ -189,6 +264,9 @@ export default function DailyReportPage() {
                       </Link>
                     </td>
                     <td className="p-3">{r.person.location}</td>
+                    {mode === "range" && (
+                      <td className="p-3 text-right">{r.daysReported}</td>
+                    )}
                     <td className="p-3 text-right">{fmt(r.sales)}</td>
                     <td className="p-3 text-right">{fmt(r.collections)}</td>
                     <td className="p-3 text-right">{fmt(r.gap)}</td>
@@ -199,7 +277,7 @@ export default function DailyReportPage() {
               </tbody>
               <tfoot className="bg-gray-50 font-semibold border-t">
                 <tr>
-                  <td className="p-3" colSpan={3}>
+                  <td className="p-3" colSpan={mode === "range" ? 4 : 3}>
                     Grand Total
                   </td>
                   <td className="p-3 text-right">{fmt(grandTotal.sales)}</td>
@@ -229,6 +307,12 @@ export default function DailyReportPage() {
                   <span className="text-xs text-gray-500">{r.person.location}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-y-1 text-sm text-gray-600">
+                  {mode === "range" && (
+                    <>
+                      <span>Days Reported</span>
+                      <span className="text-right">{r.daysReported}</span>
+                    </>
+                  )}
                   <span>Sales</span>
                   <span className="text-right">{fmt(r.sales)}</span>
                   <span>Collections</span>
@@ -244,7 +328,9 @@ export default function DailyReportPage() {
                 </div>
                 {!r.reported && (
                   <p className="text-xs text-gray-400 mt-2 border-t pt-2">
-                    No entry submitted for this date.
+                    {mode === "single"
+                      ? "No entry submitted for this date."
+                      : "No entries submitted in this range."}
                   </p>
                 )}
               </div>
@@ -270,7 +356,8 @@ export default function DailyReportPage() {
           {/* ---------- CHART: Net Sales by Sales Person (this day) ---------- */}
           <div className="bg-white rounded-xl shadow p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              Net Sales by Sales Person - {date}
+              Net Sales by Sales Person - {from}
+              {from !== to && ` to ${to}`}
             </h3>
             <div className="overflow-x-auto">
               <div style={{ minWidth: Math.max(400, rows.length * 90) }}>
@@ -298,7 +385,8 @@ export default function DailyReportPage() {
             )}
           </div>
 
-          {/* ---------- MONTHLY FORECAST ---------- */}
+          {/* ---------- MONTHLY FORECAST (single day mode only) ---------- */}
+          {mode === "single" && (
           <div className="space-y-3">
             <h2 className="text-lg font-bold">
               Monthly Forecast{" "}
@@ -367,6 +455,7 @@ export default function DailyReportPage() {
               </p>
             </div>
           </div>
+          )}
         </>
       )}
     </div>
