@@ -202,6 +202,22 @@ export default function SalesDashboard() {
           <SummaryCard label="Closing Dues" value={fmt(summary.closing_dues)} highlight />
         </div>
 
+        {/* print:hidden - visible on screen, but left out of the PDF/print
+            output since it's an input form, not report data */}
+        {userId && (
+          <div className="print:hidden">
+            <DailyEntryForm
+              userId={userId}
+              editingEntry={editingEntry}
+              onSaved={() => {
+                setEditingEntry(null);
+                load();
+              }}
+              onCancelEdit={() => setEditingEntry(null)}
+            />
+          </div>
+        )}
+
         <div>
           <h2 className="font-semibold mb-2 text-sm text-gray-600">
             Entry History{" "}
@@ -219,18 +235,6 @@ export default function SalesDashboard() {
           />
         </div>
       </div>
-
-      {userId && (
-        <DailyEntryForm
-          userId={userId}
-          editingEntry={editingEntry}
-          onSaved={() => {
-            setEditingEntry(null);
-            load();
-          }}
-          onCancelEdit={() => setEditingEntry(null)}
-        />
-      )}
     </div>
   );
 }

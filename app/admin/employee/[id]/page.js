@@ -151,6 +151,28 @@ export default function EmployeeDetailPage() {
           <SummaryCard label="Closing Dues" value={fmt(summary.closing_dues)} highlight />
         </div>
 
+        <p className="text-xs text-gray-400 print:hidden">
+          Editing here writes on behalf of this employee - it uses the exact
+          same form and rules as their own dashboard. Edited entries are
+          tracked and shown in red below.
+        </p>
+
+        {/* print:hidden - visible on screen, left out of the PDF/print
+            output since it's an input form, not report data */}
+        {person && (
+          <div className="print:hidden">
+            <DailyEntryForm
+              userId={employeeId}
+              editingEntry={editingEntry}
+              onSaved={() => {
+                setEditingEntry(null);
+                load();
+              }}
+              onCancelEdit={() => setEditingEntry(null)}
+            />
+          </div>
+        )}
+
         <div>
           <h2 className="font-semibold mb-2 text-sm text-gray-600">
             Daily Report{" "}
@@ -168,24 +190,6 @@ export default function EmployeeDetailPage() {
           />
         </div>
       </div>
-
-      <p className="text-xs text-gray-400">
-        Editing here writes on behalf of this employee - it uses the exact
-        same form and rules as their own dashboard. Edited entries are
-        tracked and shown in red below.
-      </p>
-
-      {person && (
-        <DailyEntryForm
-          userId={employeeId}
-          editingEntry={editingEntry}
-          onSaved={() => {
-            setEditingEntry(null);
-            load();
-          }}
-          onCancelEdit={() => setEditingEntry(null)}
-        />
-      )}
     </div>
   );
 }
