@@ -33,24 +33,23 @@ export default function AdminDashboard() {
     }
 
     const ids = people.map((p) => p.id);
-
-    const { data: targets } = await supabase
-      .from("monthly_targets")
-      .select("*")
-      .eq("month", month)
-      .in("user_id", ids);
-
     const monthStart = month;
     const monthEndDate = new Date(month);
     monthEndDate.setMonth(monthEndDate.getMonth() + 1);
     const monthEnd = monthEndDate.toISOString().slice(0, 10);
 
-    const { data: entries } = await supabase
-      .from("daily_entries")
-      .select("*")
-      .in("user_id", ids)
-      .gte("entry_date", monthStart)
-      .lt("entry_date", monthEnd);
+    // These two queries don't depend on each other - run them at the
+    // same time instead of one after another, so the page loads roughly
+    // twice as fast.
+    const [{ data: targets }, { data: entries }] = await Promise.all([
+      supabase.from("monthly_targets").select("*").eq("month", month).in("user_id", ids),
+      supabase
+        .from("daily_entries")
+        .select("*")
+        .in("user_id", ids)
+        .gte("entry_date", monthStart)
+        .lt("entry_date", monthEnd),
+    ]);
 
     const built = people.map((person) => {
       const target = targets?.find((t) => t.user_id === person.id);

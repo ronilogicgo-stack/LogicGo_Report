@@ -3,6 +3,39 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 
+/** Resizes/compresses an image in the browser before upload, so a
+ * multi-megabyte phone photo doesn't turn into a multi-megabyte file
+ * that has to be re-downloaded on every single page (it shows in the
+ * navbar everywhere). Returns a JPEG Blob capped at `maxSize` px on the
+ * longest side - plenty for a logo or avatar shown at 32-96px. */
+function compressImage(file, maxSize = 400, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxSize) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => resolve(blob), "image/jpeg", quality);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 /**
  * A small, reusable image upload widget backed by Supabase Storage.
  * Used for both the company logo (bucket="branding") and a person's
@@ -13,7 +46,7 @@ import { createClient } from "@/lib/supabaseClient";
  */
 export default function ImageUploader({
   bucket,
-  path, // e.g. `${userId}/avatar` or `logo` - extension is added automatically
+  path, // e.g. `${userId}/avatar` or `logo` - a fixed .jpg extension is used
   currentUrl,
   onUploaded,
   shape = "circle", // "circle" | "square"
@@ -30,22 +63,30 @@ export default function ImageUploader({
     setError("");
     setUploading(true);
 
-    const ext = file.name.split(".").pop();
-    const fullPath = `${path}.${ext}`;
+    try {
+      const compressed = await compressImage(file);
+      const fullPath = `${path}.jpg`;
 
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(fullPath, file, { upsert: true, cacheControl: "3600" });
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fullPath, compressed, {
+          upsert: true,
+          cacheControl: "3600",
+          contentType: "image/jpeg",
+        });
 
-    if (uploadError) {
-      setError(uploadError.message);
-      setUploading(false);
-      return;
+      if (uploadError) {
+        setError(uploadError.message);
+        setUploading(false);
+        return;
+      }
+
+      const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath);
+      const bustCacheUrl = `${data.publicUrl}?t=${Date.now()}`;
+      onUploaded(bustCacheUrl);
+    } catch (err) {
+      setError("Could not process that image. Try a different file.");
     }
-
-    const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath);
-    const bustCacheUrl = `${data.publicUrl}?t=${Date.now()}`;
-    onUploaded(bustCacheUrl);
     setUploading(false);
   }
 

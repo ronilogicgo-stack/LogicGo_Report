@@ -75,6 +75,25 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v16 (performance)
+- **Fixed slow data loading.** Several pages were querying the database
+  one request after another (waiting for each to finish before starting
+  the next) when the queries didn't actually depend on each other -
+  they now run at the same time, roughly halving load time on the
+  Admin dashboard, Daily Report, employee detail page, and Sales
+  dashboard.
+- **Team page's "Last report" column** used to download every daily
+  entry ever recorded for every sales person just to find the most
+  recent date - that only gets slower as more data piles up. It now
+  uses a database view that computes this instantly in Postgres.
+- **Uploaded photos are now compressed automatically** (resized to
+  400px, converted to JPEG) before saving - a multi-megabyte phone
+  photo used to get uploaded as-is and then re-downloaded on every
+  single page (since it shows in the navbar everywhere), which could
+  make the whole app feel sluggish.
+- **New database indexes** speed up the filters used on nearly every
+  page (date ranges, sales-person/status lookups).
+
 ## What's new in v15
 - **Forgot Password.** A "Forgot password?" link on the login page lets
   anyone request a reset email, then set a new password - a real gap

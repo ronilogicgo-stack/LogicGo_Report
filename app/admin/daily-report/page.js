@@ -65,15 +65,35 @@ export default function DailyReportPage() {
 
     const ids = people.map((p) => p.id);
 
-    const { data: entries } = await supabase
-      .from("daily_entries")
-      .select("*")
-      .in("user_id", ids)
-      .gte("entry_date", from)
-      .lte("entry_date", to);
+    // In "single day" mode, the month-to-date range (used for the
+    // forecast) already fully contains the single selected day - so we
+    // fetch it ONCE and derive both the day's table AND the forecast
+    // from the same data, instead of querying the database twice for
+    // overlapping date ranges.
+    const monthStart = monthStartFor(date);
+    const daysElapsed = dayOfMonthFor(date);
+    const daysInMonth = daysInMonthFor(date);
+
+    const { data: entries } =
+      mode === "single"
+        ? await supabase
+            .from("daily_entries")
+            .select("*")
+            .in("user_id", ids)
+            .gte("entry_date", monthStart)
+            .lte("entry_date", date)
+        : await supabase
+            .from("daily_entries")
+            .select("*")
+            .in("user_id", ids)
+            .gte("entry_date", from)
+            .lte("entry_date", to);
+
+    const relevantEntries =
+      mode === "single" ? (entries || []).filter((e) => e.entry_date === date) : entries || [];
 
     const entriesByUser = {};
-    for (const e of entries || []) {
+    for (const e of relevantEntries) {
       if (!entriesByUser[e.user_id]) entriesByUser[e.user_id] = [];
       entriesByUser[e.user_id].push(e);
     }
@@ -103,19 +123,8 @@ export default function DailyReportPage() {
     // how much would this month total if the month-to-date daily rate
     // (up to that day) continued for every remaining day of the month.
     if (mode === "single") {
-      const monthStart = monthStartFor(date);
-      const daysElapsed = dayOfMonthFor(date);
-      const daysInMonth = daysInMonthFor(date);
-
-      const { data: monthEntries } = await supabase
-        .from("daily_entries")
-        .select("user_id, net_sales")
-        .in("user_id", ids)
-        .gte("entry_date", monthStart)
-        .lte("entry_date", date);
-
       const soFarByUser = {};
-      for (const e of monthEntries || []) {
+      for (const e of entries || []) {
         soFarByUser[e.user_id] = (soFarByUser[e.user_id] || 0) + (Number(e.net_sales) || 0);
       }
 

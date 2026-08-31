@@ -52,15 +52,17 @@ export default function TeamManagementPage() {
       const salesIds = teamData.filter((p) => p.is_sales_person).map((p) => p.id);
       let lastReport = {};
       if (salesIds.length > 0) {
-        // One query for everyone's entries, newest first, so the FIRST
-        // row per user_id we see is that person's most recent report.
-        const { data: entries } = await supabase
-          .from("daily_entries")
-          .select("user_id, entry_date")
-          .in("user_id", salesIds)
-          .order("entry_date", { ascending: false });
-        for (const e of entries || []) {
-          if (!lastReport[e.user_id]) lastReport[e.user_id] = e.entry_date;
+        // Uses the last_report_per_user database view, which computes
+        // this aggregate in Postgres (fast, indexed) instead of
+        // downloading every daily entry ever made and scanning for the
+        // max in the browser - this stays fast no matter how much data
+        // has piled up over time.
+        const { data: reports } = await supabase
+          .from("last_report_per_user")
+          .select("user_id, last_report")
+          .in("user_id", salesIds);
+        for (const r of reports || []) {
+          lastReport[r.user_id] = r.last_report;
         }
       }
       setTeam(teamData.map((p) => ({ ...p, last_report: lastReport[p.id] || null })));

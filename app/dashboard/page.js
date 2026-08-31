@@ -34,25 +34,28 @@ export default function SalesDashboard() {
     if (!session) return;
     setUserId(session.user.id);
 
-    const { data: t } = await supabase
-      .from("monthly_targets")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .eq("month", month)
-      .maybeSingle();
-    setTarget(t);
-
     const monthEndDate = new Date(month);
     monthEndDate.setMonth(monthEndDate.getMonth() + 1);
     const monthEnd = monthEndDate.toISOString().slice(0, 10);
 
-    const { data: e } = await supabase
-      .from("daily_entries")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .gte("entry_date", month)
-      .lt("entry_date", monthEnd)
-      .order("entry_date", { ascending: false });
+    // These two don't depend on each other - run them at once.
+    const [{ data: t }, { data: e }] = await Promise.all([
+      supabase
+        .from("monthly_targets")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .eq("month", month)
+        .maybeSingle(),
+      supabase
+        .from("daily_entries")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .gte("entry_date", month)
+        .lt("entry_date", monthEnd)
+        .order("entry_date", { ascending: false }),
+    ]);
+
+    setTarget(t);
     setEntries(e || []);
     setLoading(false);
   }, [month, supabase]);

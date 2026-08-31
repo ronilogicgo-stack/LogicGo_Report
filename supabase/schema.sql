@@ -334,6 +334,24 @@ create policy "branding: anyone can view logo"
   on storage.objects for select
   using (bucket_id = 'branding');
 
+-- ---------------------------------------------------------------------
+-- 6. PERFORMANCE: view + indexes
+-- ---------------------------------------------------------------------
+create or replace view public.last_report_per_user
+with (security_invoker = true) as
+select user_id, max(entry_date) as last_report
+from public.daily_entries
+group by user_id;
+
+create index if not exists idx_daily_entries_entry_date
+  on public.daily_entries (entry_date);
+
+create index if not exists idx_profiles_sales_person_status
+  on public.profiles (is_sales_person, status);
+
+create index if not exists idx_profiles_admin
+  on public.profiles (is_admin) where is_admin = true;
+
 -- =====================================================================
 -- MAKE THE FIRST ADMIN
 -- After you sign up once through the app's /signup page, run this

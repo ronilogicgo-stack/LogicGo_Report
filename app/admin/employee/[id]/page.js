@@ -27,32 +27,35 @@ export default function EmployeeDetailPage() {
   const load = useCallback(async () => {
     setLoading(true);
 
-    const { data: p } = await supabase
-      .from("profiles")
-      .select("id, full_name, location, status, email, avatar_url")
-      .eq("id", employeeId)
-      .single();
-    setPerson(p);
-
-    const { data: t } = await supabase
-      .from("monthly_targets")
-      .select("*")
-      .eq("user_id", employeeId)
-      .eq("month", month)
-      .maybeSingle();
-    setTarget(t);
-
     const monthEndDate = new Date(month);
     monthEndDate.setMonth(monthEndDate.getMonth() + 1);
     const monthEnd = monthEndDate.toISOString().slice(0, 10);
 
-    const { data: e } = await supabase
-      .from("daily_entries")
-      .select("*")
-      .eq("user_id", employeeId)
-      .gte("entry_date", month)
-      .lt("entry_date", monthEnd)
-      .order("entry_date", { ascending: false });
+    // None of these three queries depends on another - run them all at
+    // once instead of one after another.
+    const [{ data: p }, { data: t }, { data: e }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, location, status, email, avatar_url")
+        .eq("id", employeeId)
+        .single(),
+      supabase
+        .from("monthly_targets")
+        .select("*")
+        .eq("user_id", employeeId)
+        .eq("month", month)
+        .maybeSingle(),
+      supabase
+        .from("daily_entries")
+        .select("*")
+        .eq("user_id", employeeId)
+        .gte("entry_date", month)
+        .lt("entry_date", monthEnd)
+        .order("entry_date", { ascending: false }),
+    ]);
+
+    setPerson(p);
+    setTarget(t);
     setEntries(e || []);
     setLoading(false);
   }, [employeeId, month, supabase]);
