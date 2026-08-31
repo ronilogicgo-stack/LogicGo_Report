@@ -5,3 +5,22 @@
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Every report page wraps its printable content in a `.print-area` div.
+   When printing (or "Save as PDF"), only that content is shown - the
+   navigation bar, buttons, and date pickers around it are hidden. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

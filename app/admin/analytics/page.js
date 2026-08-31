@@ -16,6 +16,8 @@ import {
 } from "recharts";
 import { createClient } from "@/lib/supabaseClient";
 import { fmt, dateKey, CHART_COLORS } from "@/lib/calculations";
+import { downloadCSV } from "@/lib/csv";
+import ExportButtons from "@/components/ExportButtons";
 
 const PRESETS = ["Daily", "Weekly", "Monthly", "Yearly", "Custom"];
 
@@ -130,6 +132,15 @@ export default function AnalyticsPage() {
   const topPerson = byPerson[0];
   const topRegion = byRegion[0];
 
+  function exportCSV() {
+    const headers = ["Sales Person", "Region", "Net Sales"];
+    const csvRows = byPerson.map((p) => {
+      const region = people.find((x) => x.full_name === p.name)?.location || "";
+      return [p.name, region, p.net];
+    });
+    downloadCSV(`analytics_${from}_to_${to}.csv`, headers, csvRows);
+  }
+
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -146,6 +157,7 @@ export default function AnalyticsPage() {
               {p}
             </button>
           ))}
+          <ExportButtons onDownloadCSV={exportCSV} />
         </div>
       </div>
 
@@ -182,7 +194,7 @@ export default function AnalyticsPage() {
       ) : entries.length === 0 ? (
         <p className="text-gray-500">No entries in this date range yet.</p>
       ) : (
-        <>
+        <div className="print-area space-y-6">
           {/* Headline stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <HeadlineCard
@@ -272,7 +284,7 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             </ChartCard>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

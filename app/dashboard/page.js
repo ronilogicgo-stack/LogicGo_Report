@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { summarizeMonth, fmt, monthKey } from "@/lib/calculations";
+import { downloadCSV } from "@/lib/csv";
+import ExportButtons from "@/components/ExportButtons";
 import DailyEntryForm from "@/components/DailyEntryForm";
 import DailyEntriesTable from "@/components/DailyEntriesTable";
 
@@ -98,16 +100,30 @@ export default function SalesDashboard() {
 
   const summary = summarizeMonth(entries, target);
 
+  function exportCSV() {
+    const headers = ["Date", "Sales", "Collections", "Collection Gap", "Sales Return", "Net Sales", "Remarks"];
+    const csvRows = entries.map((e) => [
+      e.entry_date,
+      e.sales,
+      e.collections,
+      e.collection_gap,
+      e.sales_return,
+      e.net_sales,
+      e.remarks || "",
+    ]);
+    downloadCSV(`my_sales_report_${month}.csv`, headers, csvRows);
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg sm:text-xl font-bold">My Dashboard</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <input
             type="month"
             value={month.slice(0, 7)}
             onChange={(e) => setMonth(`${e.target.value}-01`)}
-            className="border rounded-lg px-3 py-2 w-full sm:w-auto"
+            className="border rounded-lg px-3 py-2 flex-1 sm:flex-none"
           />
           {!editingTargets && (
             <button
@@ -117,6 +133,7 @@ export default function SalesDashboard() {
               Edit My Targets
             </button>
           )}
+          <ExportButtons onDownloadCSV={exportCSV} />
         </div>
       </div>
 
@@ -168,20 +185,39 @@ export default function SalesDashboard() {
       )}
 
       {/* Monthly summary - same calculation as admin dashboard */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
-        <SummaryCard label="Opening Dues" value={fmt(summary.opening_dues)} />
-        <SummaryCard label="Sales Target" value={fmt(summary.sales_target)} />
-        <SummaryCard label="Sales Achievement" value={fmt(summary.sales_achievement)} />
-        <SummaryCard label="Collection Target" value={fmt(summary.collection_target)} />
-        <SummaryCard
-          label="Collection Achievement"
-          value={fmt(summary.collection_achievement)}
-        />
-        <SummaryCard label="Collection Gap" value={fmt(summary.collection_gap)} />
-        <SummaryCard label="Sales Return" value={fmt(summary.sales_return)} />
-        <SummaryCard label="Net Sales" value={fmt(summary.net_sales)} highlight />
-        <SummaryCard label="Dues Recovery" value={fmt(summary.dues_recovery)} />
-        <SummaryCard label="Closing Dues" value={fmt(summary.closing_dues)} highlight />
+      <div className="print-area space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+          <SummaryCard label="Opening Dues" value={fmt(summary.opening_dues)} />
+          <SummaryCard label="Sales Target" value={fmt(summary.sales_target)} />
+          <SummaryCard label="Sales Achievement" value={fmt(summary.sales_achievement)} />
+          <SummaryCard label="Collection Target" value={fmt(summary.collection_target)} />
+          <SummaryCard
+            label="Collection Achievement"
+            value={fmt(summary.collection_achievement)}
+          />
+          <SummaryCard label="Collection Gap" value={fmt(summary.collection_gap)} />
+          <SummaryCard label="Sales Return" value={fmt(summary.sales_return)} />
+          <SummaryCard label="Net Sales" value={fmt(summary.net_sales)} highlight />
+          <SummaryCard label="Dues Recovery" value={fmt(summary.dues_recovery)} />
+          <SummaryCard label="Closing Dues" value={fmt(summary.closing_dues)} highlight />
+        </div>
+
+        <div>
+          <h2 className="font-semibold mb-2 text-sm text-gray-600">
+            Entry History{" "}
+            <span className="font-normal text-gray-400">
+              (rows in red have been edited after first saving)
+            </span>
+          </h2>
+          <DailyEntriesTable
+            entries={entries}
+            loading={loading}
+            onEdit={(entry) => {
+              setEditingEntry(entry);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
+        </div>
       </div>
 
       {userId && (
@@ -195,23 +231,6 @@ export default function SalesDashboard() {
           onCancelEdit={() => setEditingEntry(null)}
         />
       )}
-
-      <div>
-        <h2 className="font-semibold mb-2 text-sm text-gray-600">
-          Entry History{" "}
-          <span className="font-normal text-gray-400">
-            (rows in red have been edited after first saving)
-          </span>
-        </h2>
-        <DailyEntriesTable
-          entries={entries}
-          loading={loading}
-          onEdit={(entry) => {
-            setEditingEntry(entry);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        />
-      </div>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { summarizeMonth, fmt, monthKey } from "@/lib/calculations";
+import { downloadCSV } from "@/lib/csv";
+import ExportButtons from "@/components/ExportButtons";
 import DailyEntryForm from "@/components/DailyEntryForm";
 import DailyEntriesTable from "@/components/DailyEntriesTable";
 
@@ -62,6 +64,24 @@ export default function EmployeeDetailPage() {
   const summary = summarizeMonth(entries, target);
   const reportedDays = entries.length;
 
+  function exportCSV() {
+    const headers = ["Date", "Sales", "Collections", "Collection Gap", "Sales Return", "Net Sales", "Remarks"];
+    const csvRows = entries.map((e) => [
+      e.entry_date,
+      e.sales,
+      e.collections,
+      e.collection_gap,
+      e.sales_return,
+      e.net_sales,
+      e.remarks || "",
+    ]);
+    downloadCSV(
+      `${(person?.full_name || "employee").replace(/\s+/g, "_")}_${month}.csv`,
+      headers,
+      csvRows
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
@@ -80,38 +100,60 @@ export default function EmployeeDetailPage() {
               {person?.location} · {person?.email}
             </p>
           </div>
-          <input
-            type="month"
-            value={month.slice(0, 7)}
-            onChange={(e) => setMonth(`${e.target.value}-01`)}
-            className="border rounded-lg px-3 py-2 w-full sm:w-auto"
-          />
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <input
+              type="month"
+              value={month.slice(0, 7)}
+              onChange={(e) => setMonth(`${e.target.value}-01`)}
+              className="border rounded-lg px-3 py-2 flex-1 sm:flex-none"
+            />
+            <ExportButtons onDownloadCSV={exportCSV} />
+          </div>
         </div>
       </div>
 
-      <p className="text-sm text-gray-600">
-        Reported on <span className="font-semibold">{reportedDays}</span> day
-        {reportedDays === 1 ? "" : "s"} this month.
-      </p>
+      <div className="print-area space-y-6">
+        <p className="text-sm text-gray-600">
+          Reported on <span className="font-semibold">{reportedDays}</span> day
+          {reportedDays === 1 ? "" : "s"} this month.
+        </p>
 
-      {/* Monthly summary - identical calculation everywhere in the app */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
-        <SummaryCard label="Opening Dues" value={fmt(summary.opening_dues)} />
-        <SummaryCard label="Sales Target" value={fmt(summary.sales_target)} />
-        <SummaryCard label="Sales Achievement" value={fmt(summary.sales_achievement)} />
-        <SummaryCard label="Collection Target" value={fmt(summary.collection_target)} />
-        <SummaryCard
-          label="Collection Achievement"
-          value={fmt(summary.collection_achievement)}
-        />
-        <SummaryCard label="Collection Gap" value={fmt(summary.collection_gap)} />
-        <SummaryCard label="Sales Return" value={fmt(summary.sales_return)} />
-        <SummaryCard label="Net Sales" value={fmt(summary.net_sales)} highlight />
-        <SummaryCard
-          label="Dues Recovery"
-          value={fmt(summary.dues_recovery)}
-        />
-        <SummaryCard label="Closing Dues" value={fmt(summary.closing_dues)} highlight />
+        {/* Monthly summary - identical calculation everywhere in the app */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+          <SummaryCard label="Opening Dues" value={fmt(summary.opening_dues)} />
+          <SummaryCard label="Sales Target" value={fmt(summary.sales_target)} />
+          <SummaryCard label="Sales Achievement" value={fmt(summary.sales_achievement)} />
+          <SummaryCard label="Collection Target" value={fmt(summary.collection_target)} />
+          <SummaryCard
+            label="Collection Achievement"
+            value={fmt(summary.collection_achievement)}
+          />
+          <SummaryCard label="Collection Gap" value={fmt(summary.collection_gap)} />
+          <SummaryCard label="Sales Return" value={fmt(summary.sales_return)} />
+          <SummaryCard label="Net Sales" value={fmt(summary.net_sales)} highlight />
+          <SummaryCard
+            label="Dues Recovery"
+            value={fmt(summary.dues_recovery)}
+          />
+          <SummaryCard label="Closing Dues" value={fmt(summary.closing_dues)} highlight />
+        </div>
+
+        <div>
+          <h2 className="font-semibold mb-2 text-sm text-gray-600">
+            Daily Report{" "}
+            <span className="font-normal text-gray-400">
+              (rows in red have been edited after first saving)
+            </span>
+          </h2>
+          <DailyEntriesTable
+            entries={entries}
+            loading={loading}
+            onEdit={(entry) => {
+              setEditingEntry(entry);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
+        </div>
       </div>
 
       <p className="text-xs text-gray-400">
@@ -131,23 +173,6 @@ export default function EmployeeDetailPage() {
           onCancelEdit={() => setEditingEntry(null)}
         />
       )}
-
-      <div>
-        <h2 className="font-semibold mb-2 text-sm text-gray-600">
-          Daily Report{" "}
-          <span className="font-normal text-gray-400">
-            (rows in red have been edited after first saving)
-          </span>
-        </h2>
-        <DailyEntriesTable
-          entries={entries}
-          loading={loading}
-          onEdit={(entry) => {
-            setEditingEntry(entry);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        />
-      </div>
     </div>
   );
 }

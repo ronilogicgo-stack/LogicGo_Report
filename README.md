@@ -75,6 +75,16 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v13
+- **CSV and PDF export everywhere.** Every report page - the Admin's
+  Monthly dashboard, Daily Report, an individual employee's detail
+  page, the Sales Person's own dashboard, and Analytics - now has a
+  "⬇ CSV" button (downloads the exact data shown) and a "🖨 PDF" button
+  (opens the browser's Print dialog, scoped to just the report content
+  so navigation bars and buttons never show up in the PDF - "Save as
+  PDF" is a built-in destination in every modern browser's print
+  dialog).
+
 ## What's new in v12
 - **Custom date range on the Daily Report page.** Switch between
   "Single Day" (as before) and "Date Range" - pick any From/To dates

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { summarizeMonth, fmt, monthKey } from "@/lib/calculations";
+import { downloadCSV } from "@/lib/csv";
+import ExportButtons from "@/components/ExportButtons";
 
 export default function AdminDashboard() {
   const supabase = createClient();
@@ -125,16 +127,53 @@ export default function AdminDashboard() {
     }
   );
 
+  function exportCSV() {
+    const headers = [
+      "Sales Person",
+      "Location",
+      "Opening Dues",
+      "Sales Target",
+      "Sales Achievement",
+      "Collection Target",
+      "Collection Achievement",
+      "Collection Gap",
+      "Sales Return",
+      "Net Sales",
+      "Dues Recovery",
+      "Closing Dues",
+      "Status",
+    ];
+    const csvRows = rows.map((r) => [
+      r.person.full_name,
+      r.person.location,
+      r.summary.opening_dues,
+      r.summary.sales_target,
+      r.summary.sales_achievement,
+      r.summary.collection_target,
+      r.summary.collection_achievement,
+      r.summary.collection_gap,
+      r.summary.sales_return,
+      r.summary.net_sales,
+      r.summary.dues_recovery,
+      r.summary.closing_dues,
+      r.person.status,
+    ]);
+    downloadCSV(`sales_report_${month}.csv`, headers, csvRows);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg sm:text-xl font-bold">Monthly Sales &amp; Collection Report</h1>
-        <input
-          type="month"
-          value={month.slice(0, 7)}
-          onChange={(e) => setMonth(`${e.target.value}-01`)}
-          className="border rounded-lg px-3 py-2 w-full sm:w-auto"
-        />
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <input
+            type="month"
+            value={month.slice(0, 7)}
+            onChange={(e) => setMonth(`${e.target.value}-01`)}
+            className="border rounded-lg px-3 py-2 flex-1 sm:flex-none"
+          />
+          <ExportButtons onDownloadCSV={exportCSV} />
+        </div>
       </div>
 
       {loading ? (
@@ -144,7 +183,7 @@ export default function AdminDashboard() {
           No approved sales persons yet. Approve requests first.
         </p>
       ) : (
-        <>
+        <div className="print-area">
           {/* ---------- DESKTOP: full table ---------- */}
           <div className="hidden lg:block overflow-x-auto bg-white rounded-xl shadow">
             <table className="min-w-full text-sm">
@@ -431,7 +470,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

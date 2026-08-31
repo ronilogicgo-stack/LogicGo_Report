@@ -25,6 +25,8 @@ import {
   dayOfMonthFor,
   CHART_COLORS,
 } from "@/lib/calculations";
+import { downloadCSV } from "@/lib/csv";
+import ExportButtons from "@/components/ExportButtons";
 
 export default function DailyReportPage() {
   const supabase = createClient();
@@ -161,27 +163,60 @@ export default function DailyReportPage() {
     );
   }, [forecast]);
 
+  function exportCSV() {
+    const headers = [
+      "SL",
+      "Sales Person",
+      "Location",
+      ...(mode === "range" ? ["Days Reported"] : []),
+      "Sales Achievement",
+      "Collections Achievement",
+      "Gap",
+      "Sales Return",
+      "Net Sales",
+    ];
+    const csvRows = rows.map((r) => [
+      r.sl,
+      r.person.full_name,
+      r.person.location,
+      ...(mode === "range" ? [r.daysReported] : []),
+      r.sales,
+      r.collections,
+      r.gap,
+      r.salesReturn,
+      r.netSales,
+    ]);
+    const filename =
+      mode === "single"
+        ? `daily_report_${date}.csv`
+        : `sales_report_${from}_to_${to}.csv`;
+    downloadCSV(filename, headers, csvRows);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg sm:text-xl font-bold">Daily Sales &amp; Collections Report</h1>
-        <div className="flex bg-white border rounded-lg p-1 w-full sm:w-auto">
-          <button
-            onClick={() => setMode("single")}
-            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium ${
-              mode === "single" ? "bg-black text-white" : "text-gray-600"
-            }`}
-          >
-            Single Day
-          </button>
-          <button
-            onClick={() => setMode("range")}
-            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium ${
-              mode === "range" ? "bg-black text-white" : "text-gray-600"
-            }`}
-          >
-            Date Range
-          </button>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <div className="flex bg-white border rounded-lg p-1 flex-1 sm:flex-none">
+            <button
+              onClick={() => setMode("single")}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium ${
+                mode === "single" ? "bg-black text-white" : "text-gray-600"
+              }`}
+            >
+              Single Day
+            </button>
+            <button
+              onClick={() => setMode("range")}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium ${
+                mode === "range" ? "bg-black text-white" : "text-gray-600"
+              }`}
+            >
+              Date Range
+            </button>
+          </div>
+          <ExportButtons onDownloadCSV={exportCSV} />
         </div>
       </div>
 
@@ -234,7 +269,7 @@ export default function DailyReportPage() {
       ) : rows.length === 0 ? (
         <p className="text-gray-500">No approved sales persons yet.</p>
       ) : (
-        <>
+        <div className="print-area">
           {/* ---------- DESKTOP: table ---------- */}
           <div className="hidden md:block bg-white rounded-xl shadow overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -456,7 +491,7 @@ export default function DailyReportPage() {
             </div>
           </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
