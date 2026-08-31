@@ -75,6 +75,18 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v18 (correctness at scale)
+- **Fixed a silent data-truncation risk with years of history.**
+  Supabase caps every single request at 1000 rows by default - a
+  detail that doesn't matter for a small team's first year, but a wide
+  Analytics range, a long custom Daily Report range, or an
+  all-time "Download Data" CSV export could quietly return *incomplete*
+  totals once a few years of daily entries pile up, with no error
+  shown. These now page through all matching rows automatically, so
+  the numbers stay correct no matter how much history has accumulated.
+  (The Admin's main monthly dashboard was already safe from this,
+  since v17 made it fetch pre-totaled rows instead of raw entries.)
+
 ## What's new in v17 (performance, part 2)
 - **Admin's main dashboard is now much lighter.** It used to download
   every single daily entry for every sales person for the whole month,

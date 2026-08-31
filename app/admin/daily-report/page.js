@@ -25,6 +25,7 @@ import {
   CHART_COLORS,
 } from "@/lib/calculations";
 import { downloadCSV } from "@/lib/csv";
+import { fetchAllRows } from "@/lib/fetchAll";
 import ExportButtons from "@/components/ExportButtons";
 
 export default function DailyReportPage() {
@@ -74,23 +75,31 @@ export default function DailyReportPage() {
     const daysElapsed = dayOfMonthFor(date);
     const daysInMonth = daysInMonthFor(date);
 
-    const { data: entries } =
+    // Paginated fetch - a wide custom date range across many sales
+    // persons (or a full month for a large team) can exceed Supabase's
+    // default 1000-row-per-request cap, which would otherwise silently
+    // under-report the totals.
+    const entries =
       mode === "single"
-        ? await supabase
-            .from("daily_entries")
-            .select("*")
-            .in("user_id", ids)
-            .gte("entry_date", monthStart)
-            .lte("entry_date", date)
-        : await supabase
-            .from("daily_entries")
-            .select("*")
-            .in("user_id", ids)
-            .gte("entry_date", from)
-            .lte("entry_date", to);
+        ? await fetchAllRows(() =>
+            supabase
+              .from("daily_entries")
+              .select("*")
+              .in("user_id", ids)
+              .gte("entry_date", monthStart)
+              .lte("entry_date", date)
+          )
+        : await fetchAllRows(() =>
+            supabase
+              .from("daily_entries")
+              .select("*")
+              .in("user_id", ids)
+              .gte("entry_date", from)
+              .lte("entry_date", to)
+          );
 
     const relevantEntries =
-      mode === "single" ? (entries || []).filter((e) => e.entry_date === date) : entries || [];
+      mode === "single" ? entries.filter((e) => e.entry_date === date) : entries;
 
     const entriesByUser = {};
     for (const e of relevantEntries) {

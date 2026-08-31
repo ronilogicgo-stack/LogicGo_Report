@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabaseClient";
+import { fetchAllRows } from "@/lib/fetchAll";
 
 export default function TeamManagementPage() {
   const supabase = createClient();
@@ -141,17 +142,22 @@ export default function TeamManagementPage() {
   }
 
   async function downloadData(person) {
-    const { data: entries } = await supabase
-      .from("daily_entries")
-      .select(
-        "entry_date, sales, collections, sales_return, net_sales, collection_gap, remarks"
-      )
-      .eq("user_id", person.id)
-      .order("entry_date", { ascending: true });
+    // Paginated fetch - years of history for one person can exceed
+    // Supabase's default 1000-row-per-request cap, which would
+    // otherwise silently truncate the exported file.
+    const entries = await fetchAllRows(() =>
+      supabase
+        .from("daily_entries")
+        .select(
+          "entry_date, sales, collections, sales_return, net_sales, collection_gap, remarks"
+        )
+        .eq("user_id", person.id)
+        .order("entry_date", { ascending: true })
+    );
 
     const header =
       "Date,Sales,Collections,Sales Return,Net Sales,Collection Gap,Remarks\n";
-    const rows = (entries || [])
+    const rows = entries
       .map(
         (e) =>
           `${e.entry_date},${e.sales},${e.collections},${e.sales_return},${e.net_sales},${e.collection_gap},"${(

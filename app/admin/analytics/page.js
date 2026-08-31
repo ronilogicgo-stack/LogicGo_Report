@@ -17,6 +17,7 @@ import {
 import { createClient } from "@/lib/supabaseClient";
 import { fmt, dateKey, CHART_COLORS } from "@/lib/calculations";
 import { downloadCSV } from "@/lib/csv";
+import { fetchAllRows } from "@/lib/fetchAll";
 import ExportButtons from "@/components/ExportButtons";
 
 const PRESETS = ["Daily", "Weekly", "Monthly", "Yearly", "Custom"];
@@ -70,13 +71,18 @@ export default function AnalyticsPage() {
 
     if (peopleData && peopleData.length > 0) {
       const ids = peopleData.map((p) => p.id);
-      const { data: entryData } = await supabase
-        .from("daily_entries")
-        .select("user_id, entry_date, sales, collections, sales_return, net_sales")
-        .in("user_id", ids)
-        .gte("entry_date", from)
-        .lte("entry_date", to);
-      setEntries(entryData || []);
+      // Paginated fetch - a wide date range across many sales persons
+      // can easily exceed Supabase's default 1000-row-per-request cap,
+      // which would otherwise silently under-report the totals.
+      const entryData = await fetchAllRows(() =>
+        supabase
+          .from("daily_entries")
+          .select("user_id, entry_date, sales, collections, sales_return, net_sales")
+          .in("user_id", ids)
+          .gte("entry_date", from)
+          .lte("entry_date", to)
+      );
+      setEntries(entryData);
     } else {
       setEntries([]);
     }
