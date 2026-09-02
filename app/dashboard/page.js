@@ -196,12 +196,14 @@ export default function SalesDashboard() {
             label="Sales Achievement"
             value={fmt(summary.sales_achievement)}
             belowTarget={summary.sales_achievement < summary.sales_target}
+            aboveTarget={summary.sales_achievement > summary.sales_target}
           />
           <SummaryCard label="Collection Target" value={fmt(summary.collection_target)} />
           <SummaryCard
             label="Collection Achievement"
             value={fmt(summary.collection_achievement)}
             belowTarget={summary.collection_achievement < summary.collection_target}
+            aboveTarget={summary.collection_achievement > summary.collection_target}
           />
           <SummaryCard label="Collection Gap" value={fmt(summary.collection_gap)} />
           <SummaryCard label="Sales Return" value={fmt(summary.sales_return)} />
@@ -247,12 +249,14 @@ export default function SalesDashboard() {
   );
 }
 
-function SummaryCard({ label, value, highlight, belowTarget }) {
+function SummaryCard({ label, value, highlight, belowTarget, aboveTarget }) {
   return (
     <div
       className={`rounded-xl shadow p-3 sm:p-4 ${
         belowTarget
           ? "bg-red-50 ring-1 ring-red-300"
+          : aboveTarget
+          ? "bg-green-50 ring-1 ring-green-300"
           : highlight
           ? "bg-black text-white"
           : "bg-white"
@@ -260,20 +264,29 @@ function SummaryCard({ label, value, highlight, belowTarget }) {
     >
       <p
         className={`text-xs ${
-          belowTarget ? "text-red-600" : highlight ? "text-gray-300" : "text-gray-500"
+          belowTarget
+            ? "text-red-600"
+            : aboveTarget
+            ? "text-green-600"
+            : highlight
+            ? "text-gray-300"
+            : "text-gray-500"
         }`}
       >
         {label}
       </p>
       <p
         className={`text-base sm:text-lg font-bold mt-1 ${
-          belowTarget ? "text-red-700" : ""
+          belowTarget ? "text-red-700" : aboveTarget ? "text-green-700" : ""
         }`}
       >
         {value}
       </p>
       {belowTarget && (
         <p className="text-[11px] text-red-600 font-medium mt-0.5">Below target</p>
+      )}
+      {aboveTarget && (
+        <p className="text-[11px] text-green-600 font-medium mt-0.5">Above target</p>
       )}
     </div>
   );

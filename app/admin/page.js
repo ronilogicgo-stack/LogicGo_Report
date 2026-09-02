@@ -235,13 +235,7 @@ export default function AdminDashboard() {
                             }
                           />
                         </td>
-                        <td
-                          className={`p-3 text-right ${
-                            r.summary.sales_achievement < r.summary.sales_target
-                              ? "text-red-600 font-medium bg-red-50"
-                              : ""
-                          }`}
-                        >
+                        <td className={`p-3 text-right ${achvClass(r.summary.sales_achievement, r.summary.sales_target)}`}>
                           {fmt(r.summary.sales_achievement)}
                         </td>
                         <td className="p-2">
@@ -257,13 +251,7 @@ export default function AdminDashboard() {
                             }
                           />
                         </td>
-                        <td
-                          className={`p-3 text-right ${
-                            r.summary.collection_achievement < r.summary.collection_target
-                              ? "text-red-600 font-medium bg-red-50"
-                              : ""
-                          }`}
-                        >
+                        <td className={`p-3 text-right ${achvClass(r.summary.collection_achievement, r.summary.collection_target)}`}>
                           {fmt(r.summary.collection_achievement)}
                         </td>
                         <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
@@ -287,23 +275,11 @@ export default function AdminDashboard() {
                       <>
                         <td className="p-3 text-right">{fmt(r.summary.opening_dues)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.sales_target)}</td>
-                        <td
-                          className={`p-3 text-right ${
-                            r.summary.sales_achievement < r.summary.sales_target
-                              ? "text-red-600 font-medium bg-red-50"
-                              : ""
-                          }`}
-                        >
+                        <td className={`p-3 text-right ${achvClass(r.summary.sales_achievement, r.summary.sales_target)}`}>
                           {fmt(r.summary.sales_achievement)}
                         </td>
                         <td className="p-3 text-right">{fmt(r.summary.collection_target)}</td>
-                        <td
-                          className={`p-3 text-right ${
-                            r.summary.collection_achievement < r.summary.collection_target
-                              ? "text-red-600 font-medium bg-red-50"
-                              : ""
-                          }`}
-                        >
+                        <td className={`p-3 text-right ${achvClass(r.summary.collection_achievement, r.summary.collection_target)}`}>
                           {fmt(r.summary.collection_achievement)}
                         </td>
                         <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
@@ -420,6 +396,7 @@ export default function AdminDashboard() {
                         label="Sales Achv."
                         value={fmt(r.summary.sales_achievement)}
                         warn={r.summary.sales_achievement < r.summary.sales_target}
+                        good={r.summary.sales_achievement > r.summary.sales_target}
                       />
                       <StatRow
                         label="Collection Target"
@@ -429,6 +406,7 @@ export default function AdminDashboard() {
                         label="Collection Achv."
                         value={fmt(r.summary.collection_achievement)}
                         warn={r.summary.collection_achievement < r.summary.collection_target}
+                        good={r.summary.collection_achievement > r.summary.collection_target}
                       />
                       <StatRow label="Gap" value={fmt(r.summary.collection_gap)} />
                       <StatRow label="Sales Return" value={fmt(r.summary.sales_return)} />
@@ -501,6 +479,15 @@ export default function AdminDashboard() {
   );
 }
 
+/** Returns a red highlight if achievement is below target, green if
+ * above, or nothing if it's on target - purely visual, never affects
+ * any calculation. */
+function achvClass(achievement, target) {
+  if (achievement < target) return "text-red-600 font-medium bg-red-50";
+  if (achievement > target) return "text-green-600 font-medium bg-green-50";
+  return "";
+}
+
 function StatusBadge({ status }) {
   const styles = {
     approved: "bg-green-100 text-green-700",
@@ -517,16 +504,21 @@ function StatusBadge({ status }) {
   );
 }
 
-function StatRow({ label, value, bold, dark, warn }) {
+function StatRow({ label, value, bold, dark, warn, good }) {
   return (
     <>
-      <span className={warn ? "text-red-600" : dark ? "text-gray-300" : "text-gray-500"}>
+      <span
+        className={
+          warn ? "text-red-600" : good ? "text-green-600" : dark ? "text-gray-300" : "text-gray-500"
+        }
+      >
         {label}
         {warn && " ⚠"}
+        {good && " ✓"}
       </span>
       <span
         className={`text-right ${bold ? "font-semibold" : ""} ${
-          warn ? "text-red-600 font-medium" : ""
+          warn ? "text-red-600 font-medium" : good ? "text-green-600 font-medium" : ""
         }`}
       >
         {value}

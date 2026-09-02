@@ -75,6 +75,14 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v20 (visual only, calculations unchanged)
+- **"Above target" green highlight**, to match v19's red "below
+  target" flag. Sales/Collection Achievement now turns green when it
+  exceeds that month's target, stays red when it's under, and looks
+  normal when it's exactly on target - on the Admin dashboard, an
+  employee's detail page, and the Sales Person's own dashboard. Purely
+  visual, same as before: no calculation ever changes because of it.
+
 ## What's new in v19 (visual only, calculations unchanged)
 - **"Below target" red highlight.** Sales Achievement or Collection
   Achievement now turns red with a small "Below target" note whenever
