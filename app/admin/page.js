@@ -235,7 +235,15 @@ export default function AdminDashboard() {
                             }
                           />
                         </td>
-                        <td className="p-3 text-right">{fmt(r.summary.sales_achievement)}</td>
+                        <td
+                          className={`p-3 text-right ${
+                            r.summary.sales_achievement < r.summary.sales_target
+                              ? "text-red-600 font-medium bg-red-50"
+                              : ""
+                          }`}
+                        >
+                          {fmt(r.summary.sales_achievement)}
+                        </td>
                         <td className="p-2">
                           <input
                             type="number"
@@ -249,7 +257,13 @@ export default function AdminDashboard() {
                             }
                           />
                         </td>
-                        <td className="p-3 text-right">
+                        <td
+                          className={`p-3 text-right ${
+                            r.summary.collection_achievement < r.summary.collection_target
+                              ? "text-red-600 font-medium bg-red-50"
+                              : ""
+                          }`}
+                        >
                           {fmt(r.summary.collection_achievement)}
                         </td>
                         <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
@@ -273,9 +287,23 @@ export default function AdminDashboard() {
                       <>
                         <td className="p-3 text-right">{fmt(r.summary.opening_dues)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.sales_target)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.sales_achievement)}</td>
+                        <td
+                          className={`p-3 text-right ${
+                            r.summary.sales_achievement < r.summary.sales_target
+                              ? "text-red-600 font-medium bg-red-50"
+                              : ""
+                          }`}
+                        >
+                          {fmt(r.summary.sales_achievement)}
+                        </td>
                         <td className="p-3 text-right">{fmt(r.summary.collection_target)}</td>
-                        <td className="p-3 text-right">
+                        <td
+                          className={`p-3 text-right ${
+                            r.summary.collection_achievement < r.summary.collection_target
+                              ? "text-red-600 font-medium bg-red-50"
+                              : ""
+                          }`}
+                        >
                           {fmt(r.summary.collection_achievement)}
                         </td>
                         <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
@@ -391,6 +419,7 @@ export default function AdminDashboard() {
                       <StatRow
                         label="Sales Achv."
                         value={fmt(r.summary.sales_achievement)}
+                        warn={r.summary.sales_achievement < r.summary.sales_target}
                       />
                       <StatRow
                         label="Collection Target"
@@ -399,6 +428,7 @@ export default function AdminDashboard() {
                       <StatRow
                         label="Collection Achv."
                         value={fmt(r.summary.collection_achievement)}
+                        warn={r.summary.collection_achievement < r.summary.collection_target}
                       />
                       <StatRow label="Gap" value={fmt(r.summary.collection_gap)} />
                       <StatRow label="Sales Return" value={fmt(r.summary.sales_return)} />
@@ -487,11 +517,20 @@ function StatusBadge({ status }) {
   );
 }
 
-function StatRow({ label, value, bold, dark }) {
+function StatRow({ label, value, bold, dark, warn }) {
   return (
     <>
-      <span className={dark ? "text-gray-300" : "text-gray-500"}>{label}</span>
-      <span className={`text-right ${bold ? "font-semibold" : ""}`}>{value}</span>
+      <span className={warn ? "text-red-600" : dark ? "text-gray-300" : "text-gray-500"}>
+        {label}
+        {warn && " ⚠"}
+      </span>
+      <span
+        className={`text-right ${bold ? "font-semibold" : ""} ${
+          warn ? "text-red-600 font-medium" : ""
+        }`}
+      >
+        {value}
+      </span>
     </>
   );
 }

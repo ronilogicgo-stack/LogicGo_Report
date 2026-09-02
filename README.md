@@ -75,6 +75,15 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v19 (visual only, calculations unchanged)
+- **"Below target" red highlight.** Sales Achievement or Collection
+  Achievement now turns red with a small "Below target" note whenever
+  it's under that month's target - on the Admin dashboard, an
+  individual employee's detail page, and the Sales Person's own
+  dashboard. This is purely a visual flag: it never changes Net Sales,
+  Collection Gap, Closing Dues, or Dues Recovery, which are always
+  calculated from the real achievement numbers alone, never the target.
+
 ## What's new in v18 (correctness at scale)
 - **Fixed a silent data-truncation risk with years of history.**
   Supabase caps every single request at 1000 rows by default - a
