@@ -75,6 +75,16 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v23.3
+- **Double-click any cell to edit it directly** (like a spreadsheet) -
+  Entry Date, Executive, Company, Phone, Location, Received, Due,
+  Status, Ledger Due, and Latest Followup can all be changed right in
+  the table, without opening the full form. Press Enter or click away
+  to save, Escape to cancel. Only available to people with Editor
+  access; Viewers still see a plain read-only table. Editing "Latest
+  Followup" updates the correct one of the 5 stored slots, same as the
+  main form.
+
 ## What's new in v23.2
 - **Simplified the Follow-up Date to one field** in the Add/Edit form
   (was 5 separate date pickers). Editing it updates whichever of the 5

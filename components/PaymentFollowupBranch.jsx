@@ -62,6 +62,73 @@ function TruncatedText({ text, words = 3, className = "" }) {
   );
 }
 
+/** A table cell that becomes an inline input/select when double-clicked
+ * (like a spreadsheet) - Enter saves, Escape cancels, clicking away
+ * saves. Only rendered as editable when the caller has edit rights;
+ * viewers just see the plain static cell. */
+function EditableCell({ value, onSave, type = "text", options, className = "", format }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+
+  useEffect(() => {
+    setDraft(value ?? "");
+  }, [value]);
+
+  if (!editing) {
+    return (
+      <td
+        className={`${className} cursor-pointer hover:bg-black/5`}
+        onDoubleClick={() => setEditing(true)}
+        title="Double-click to edit"
+      >
+        {format ? format(value) : value || value === 0 ? String(value) : "-"}
+      </td>
+    );
+  }
+
+  function commit() {
+    setEditing(false);
+    if (String(draft) !== String(value ?? "")) onSave(draft);
+  }
+
+  return (
+    <td className={className}>
+      {type === "select" ? (
+        <select
+          autoFocus
+          className="border border-slate-400 rounded px-1 py-0.5 text-sm w-full"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+        >
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          autoFocus
+          type={type}
+          className="border border-slate-400 rounded px-1 py-0.5 text-sm w-full"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+        />
+      )}
+    </td>
+  );
+}
+
 const emptyForm = {
   serial: "",
   entry_date: dateKey(),
@@ -250,6 +317,38 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
     setSaving(false);
   }
 
+  /** Saves a single field from an inline double-click edit - used for
+   * every quick-edit cell in the table below. */
+  async function saveField(record, field, rawValue) {
+    let value = rawValue;
+    if (["received_amount", "due_amount", "ledger_due", "serial"].includes(field)) {
+      value = Number(rawValue) || 0;
+    }
+    const { error: saveErr } = await supabase
+      .from("payment_followups")
+      .update({ [field]: value === "" ? null : value })
+      .eq("id", record.id);
+    if (saveErr) {
+      alert(`Could not save: ${saveErr.message}`);
+      return;
+    }
+    load();
+  }
+
+  /** Same idea, but for the "Latest Followup" cell - it writes into
+   * whichever of the 5 stored slots currently holds the latest date. */
+  async function saveLatestFollowup(record, newDate) {
+    const { error: saveErr } = await supabase
+      .from("payment_followups")
+      .update(buildFollowupSlots(record, newDate || null))
+      .eq("id", record.id);
+    if (saveErr) {
+      alert(`Could not save: ${saveErr.message}`);
+      return;
+    }
+    load();
+  }
+
   async function handleDelete(r) {
     if (!confirm(`Delete the record for "${r.company_name}"? This cannot be undone.`)) return;
     const { error: delError } = await supabase.from("payment_followups").delete().eq("id", r.id);
@@ -280,7 +379,9 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
         <div>
           <h1 className="text-lg sm:text-xl font-bold">{branchName} · Payment Follow-Up</h1>
           <p className="text-sm text-slate-500">
-            {canEdit ? "You can add and edit records here." : "View only - ask an Admin for edit access."}
+            {canEdit
+              ? "Double-click any cell to edit it directly, or use \"+ Add Record\" for a full form."
+              : "View only - ask an Admin for edit access."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -404,10 +505,39 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                   return (
                     <tr key={r.id} className={`border-t ${ROW_TONE[priority]}`}>
                       <td className="p-3 num">{r.serial ?? "-"}</td>
-                      <td className="p-3">{r.entry_date || "-"}</td>
-                      <td className="p-3">{r.executive_name || "-"}</td>
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3"
+                          type="date"
+                          value={r.entry_date || ""}
+                          onSave={(v) => saveField(r, "entry_date", v)}
+                        />
+                      ) : (
+                        <td className="p-3">{r.entry_date || "-"}</td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3"
+                          value={r.executive_name || ""}
+                          onSave={(v) => saveField(r, "executive_name", v)}
+                        />
+                      ) : (
+                        <td className="p-3">{r.executive_name || "-"}</td>
+                      )}
                       <td className="p-3">
-                        <p className="font-medium">{r.company_name}</p>
+                        {canEdit ? (
+                          <input
+                            defaultValue={r.company_name}
+                            onBlur={(e) => {
+                              if (e.target.value !== r.company_name)
+                                saveField(r, "company_name", e.target.value);
+                            }}
+                            onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
+                            className="font-medium border border-transparent hover:border-slate-300 focus:border-slate-400 rounded px-1 -mx-1 bg-transparent w-full"
+                          />
+                        ) : (
+                          <p className="font-medium">{r.company_name}</p>
+                        )}
                         {r.note && (
                           <p
                             className="text-xs text-slate-400 mt-0.5 max-w-[160px] truncate"
@@ -417,15 +547,109 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                           </p>
                         )}
                       </td>
-                      <td className="p-3"><PhoneActions phone={r.phone_number} /></td>
                       <td className="p-3">
-                        <TruncatedText text={r.location} words={3} />
+                        {canEdit ? (
+                          <span className="inline-flex items-center gap-2">
+                            <input
+                              defaultValue={r.phone_number}
+                              onBlur={(e) => {
+                                if (e.target.value !== r.phone_number)
+                                  saveField(r, "phone_number", e.target.value);
+                              }}
+                              onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
+                              className="border border-transparent hover:border-slate-300 focus:border-slate-400 rounded px-1 -mx-1 bg-transparent w-24"
+                            />
+                            {normalizePhone(r.phone_number) && (
+                              <span className="inline-flex items-center gap-1">
+                                <a
+                                  href={`tel:+${normalizePhone(r.phone_number)}`}
+                                  title="Call"
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 shrink-0"
+                                >
+                                  <Phone size={12} strokeWidth={2.5} />
+                                </a>
+                                <a
+                                  href={`https://wa.me/${normalizePhone(r.phone_number)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="WhatsApp"
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 shrink-0"
+                                >
+                                  <MessageCircle size={12} strokeWidth={2.5} />
+                                </a>
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <PhoneActions phone={r.phone_number} />
+                        )}
                       </td>
-                      <td className="p-3 text-right num">{fmt(r.received_amount)}</td>
-                      <td className="p-3 text-right num">{fmt(r.due_amount)}</td>
-                      <td className="p-3">{r.payment_status}</td>
-                      <td className="p-3 text-right num">{fmt(r.ledger_due)}</td>
-                      <td className="p-3">{latest}</td>
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3"
+                          value={r.location || ""}
+                          format={(v) => <TruncatedText text={v} words={3} />}
+                          onSave={(v) => saveField(r, "location", v)}
+                        />
+                      ) : (
+                        <td className="p-3">
+                          <TruncatedText text={r.location} words={3} />
+                        </td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3 text-right num"
+                          type="number"
+                          value={r.received_amount}
+                          format={fmt}
+                          onSave={(v) => saveField(r, "received_amount", v)}
+                        />
+                      ) : (
+                        <td className="p-3 text-right num">{fmt(r.received_amount)}</td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3 text-right num"
+                          type="number"
+                          value={r.due_amount}
+                          format={fmt}
+                          onSave={(v) => saveField(r, "due_amount", v)}
+                        />
+                      ) : (
+                        <td className="p-3 text-right num">{fmt(r.due_amount)}</td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3"
+                          type="select"
+                          options={["Due", "Received"]}
+                          value={r.payment_status}
+                          onSave={(v) => saveField(r, "payment_status", v)}
+                        />
+                      ) : (
+                        <td className="p-3">{r.payment_status}</td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3 text-right num"
+                          type="number"
+                          value={r.ledger_due}
+                          format={fmt}
+                          onSave={(v) => saveField(r, "ledger_due", v)}
+                        />
+                      ) : (
+                        <td className="p-3 text-right num">{fmt(r.ledger_due)}</td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3"
+                          type="date"
+                          value={latest === "-" ? "" : latest}
+                          onSave={(v) => saveLatestFollowup(r, v)}
+                        />
+                      ) : (
+                        <td className="p-3">{latest}</td>
+                      )}
                       <td className="p-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${BADGE_TONE[priority]}`}>
                           {BADGE_LABEL[priority]}
