@@ -75,6 +75,13 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v23.5
+- **Executive-wise summary** at the top of each branch's Payment
+  Follow-Up page: how many clients each Executive has with a Due
+  payment, and their total Ledger Due amount - sorted highest-due
+  first, with a grand total row. Updates automatically as records
+  change.
+
 ## What's new in v23.4
 - **No more "loading flash" on edits.** Double-click edits, the
   Add/Edit form, and deleting a record now update the on-screen list

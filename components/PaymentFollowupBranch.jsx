@@ -249,6 +249,21 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
     return c;
   }, [records]);
 
+  /** Groups only the still-Due records by Executive, so an Admin can
+   * see at a glance who's carrying how many overdue clients and how
+   * much Ledger Due sits with each person. */
+  const executiveSummary = useMemo(() => {
+    const byExec = {};
+    for (const r of records) {
+      if (r.payment_status !== "Due") continue;
+      const name = r.executive_name?.trim() || "Unassigned";
+      if (!byExec[name]) byExec[name] = { name, dueClients: 0, totalLedgerDue: 0 };
+      byExec[name].dueClients += 1;
+      byExec[name].totalLedgerDue += Number(r.ledger_due) || 0;
+    }
+    return Object.values(byExec).sort((a, b) => b.totalLedgerDue - a.totalLedgerDue);
+  }, [records]);
+
   function startAdd() {
     const nextSerial =
       records.reduce((max, r) => Math.max(max, Number(r.serial) || 0), 0) + 1;
@@ -418,6 +433,47 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
           {counts.normal} On Track
         </span>
       </div>
+
+      {executiveSummary.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <div className="px-4 pt-3">
+            <h2 className="text-sm font-semibold text-slate-700">
+              Due Clients &amp; Ledger Due by Executive
+            </h2>
+          </div>
+          <table className="min-w-full text-sm mt-2">
+            <thead className="bg-slate-50 text-left text-slate-500">
+              <tr>
+                <th className="p-3">Executive</th>
+                <th className="p-3 text-right num">Due Clients</th>
+                <th className="p-3 text-right num">Total Ledger Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {executiveSummary.map((e) => (
+                <tr key={e.name} className="border-t">
+                  <td className="p-3 font-medium">{e.name}</td>
+                  <td className="p-3 text-right num">{e.dueClients}</td>
+                  <td className="p-3 text-right num font-medium text-red-600">
+                    {fmt(e.totalLedgerDue)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="bg-slate-50 font-semibold border-t">
+              <tr>
+                <td className="p-3">Total</td>
+                <td className="p-3 text-right num">
+                  {executiveSummary.reduce((s, e) => s + e.dueClients, 0)}
+                </td>
+                <td className="p-3 text-right num">
+                  {fmt(executiveSummary.reduce((s, e) => s + e.totalLedgerDue, 0))}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
 
       {showForm && canEdit && (
         <form
