@@ -75,6 +75,22 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v23.4
+- **No more "loading flash" on edits.** Double-click edits, the
+  Add/Edit form, and deleting a record now update the on-screen list
+  instantly instead of triggering a full reload - much smoother.
+- **Note is now its own editable column** (previously it was just a
+  small preview under the company name and wasn't editable there).
+  Double-click it like any other cell.
+- **Tighter, consistent row alignment** - every cell in a row now sits
+  on a single line at the same height, so columns no longer look
+  unevenly spaced.
+- **Re-synced the spreadsheet data.** `seed_payment_followups.sql` was
+  regenerated to safely match your spreadsheet exactly (matches each
+  row by branch + company + entry date, replacing any old/incorrect
+  copy) - safe to re-run any time your spreadsheet changes, and it
+  won't touch records you've added manually in the app.
+
 ## What's new in v23.3
 - **Double-click any cell to edit it directly** (like a spreadsheet) -
   Entry Date, Executive, Company, Phone, Location, Received, Due,

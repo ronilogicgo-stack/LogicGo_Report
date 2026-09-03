@@ -301,52 +301,62 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       ...buildFollowupSlots(editingId ? editingRecord : null, form.followup_date || null),
     };
 
-    const { error: saveError } = editingId
-      ? await supabase.from("payment_followups").update(payload).eq("id", editingId)
-      : await supabase.from("payment_followups").insert(payload);
+    const query = editingId
+      ? supabase.from("payment_followups").update(payload).eq("id", editingId).select().single()
+      : supabase.from("payment_followups").insert(payload).select().single();
+    const { data: savedRow, error: saveError } = await query;
 
     if (saveError) {
       setError(saveError.message);
     } else {
+      // Update local state directly instead of re-fetching everything -
+      // no loading flicker, the table updates instantly.
+      setRecords((prev) =>
+        editingId ? prev.map((r) => (r.id === editingId ? savedRow : r)) : [...prev, savedRow]
+      );
       setShowForm(false);
       setForm(emptyForm);
       setEditingId(null);
-    setEditingRecord(null);
-      load();
+      setEditingRecord(null);
     }
     setSaving(false);
   }
 
   /** Saves a single field from an inline double-click edit - used for
-   * every quick-edit cell in the table below. */
+   * every quick-edit cell in the table below. Updates local state
+   * directly (no full reload/loading flash) for an instant feel. */
   async function saveField(record, field, rawValue) {
     let value = rawValue;
     if (["received_amount", "due_amount", "ledger_due", "serial"].includes(field)) {
       value = Number(rawValue) || 0;
     }
-    const { error: saveErr } = await supabase
+    const { data: savedRow, error: saveErr } = await supabase
       .from("payment_followups")
       .update({ [field]: value === "" ? null : value })
-      .eq("id", record.id);
+      .eq("id", record.id)
+      .select()
+      .single();
     if (saveErr) {
       alert(`Could not save: ${saveErr.message}`);
       return;
     }
-    load();
+    setRecords((prev) => prev.map((r) => (r.id === record.id ? savedRow : r)));
   }
 
   /** Same idea, but for the "Latest Followup" cell - it writes into
    * whichever of the 5 stored slots currently holds the latest date. */
   async function saveLatestFollowup(record, newDate) {
-    const { error: saveErr } = await supabase
+    const { data: savedRow, error: saveErr } = await supabase
       .from("payment_followups")
       .update(buildFollowupSlots(record, newDate || null))
-      .eq("id", record.id);
+      .eq("id", record.id)
+      .select()
+      .single();
     if (saveErr) {
       alert(`Could not save: ${saveErr.message}`);
       return;
     }
-    load();
+    setRecords((prev) => prev.map((r) => (r.id === record.id ? savedRow : r)));
   }
 
   async function handleDelete(r) {
@@ -356,7 +366,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       alert(`Could not delete: ${delError.message}`);
       return;
     }
-    load();
+    setRecords((prev) => prev.filter((rec) => rec.id !== r.id));
   }
 
   function exportCSV() {
@@ -476,7 +486,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
         <div className="print-area">
           {/* ---------- DESKTOP: table ---------- */}
           <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm [&_td]:align-middle [&_th]:align-middle [&_td]:whitespace-nowrap">
               <thead className="bg-slate-100 text-left">
                 <tr>
                   <th className="p-3">SL</th>
@@ -489,6 +499,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                   <th className="p-3 text-right num">Due</th>
                   <th className="p-3">Status</th>
                   <th className="p-3 text-right num">Ledger Due</th>
+                  <th className="p-3">Note</th>
                   <th className="p-3">Latest Followup</th>
                   <th className="p-3">Priority</th>
                   {canEdit && <th className="p-3"></th>}
@@ -537,14 +548,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                           />
                         ) : (
                           <p className="font-medium">{r.company_name}</p>
-                        )}
-                        {r.note && (
-                          <p
-                            className="text-xs text-slate-400 mt-0.5 max-w-[160px] truncate"
-                            title={r.note}
-                          >
-                            {r.note}
-                          </p>
                         )}
                       </td>
                       <td className="p-3">
@@ -639,6 +642,18 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                         />
                       ) : (
                         <td className="p-3 text-right num">{fmt(r.ledger_due)}</td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3 max-w-[180px]"
+                          value={r.note || ""}
+                          format={(v) => <TruncatedText text={v} words={4} />}
+                          onSave={(v) => saveField(r, "note", v)}
+                        />
+                      ) : (
+                        <td className="p-3 max-w-[180px]">
+                          <TruncatedText text={r.note} words={4} />
+                        </td>
                       )}
                       {canEdit ? (
                         <EditableCell
