@@ -75,6 +75,14 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v23.1
+- **Click-to-call and WhatsApp buttons** next to every phone number in
+  the Payment Follow-Up module. Tapping the phone icon dials the
+  number directly; tapping the chat icon opens a WhatsApp conversation
+  with that number - no copy-pasting needed. Numbers are automatically
+  converted to Bangladesh's international format (880...) regardless
+  of whether they were entered with a leading 0, dashes, or spaces.
+
 ## What's new in v23 - Payment Follow-Up module
 - **Branch-wise Payment Follow-Up tracker**, replacing the Google
   Sheet + Apps Script version. Same idea: each record (company/client)

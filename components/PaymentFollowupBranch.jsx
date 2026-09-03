@@ -1,10 +1,52 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { Phone, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { fmt, dateKey, sortFollowups, followupPriority } from "@/lib/calculations";
 import { downloadCSV } from "@/lib/csv";
 import ExportButtons from "@/components/ExportButtons";
+
+/** Normalizes a Bangladeshi phone number (with or without a leading 0
+ * or the 880 country code, with or without dashes/spaces) into a bare
+ * international-format digit string, e.g. "01712-358262" -> "8801712358262". */
+function normalizePhone(raw) {
+  if (!raw) return null;
+  const digits = String(raw).replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("880")) return digits;
+  if (digits.startsWith("0")) return "880" + digits.slice(1);
+  if (digits.length === 10) return "880" + digits;
+  return digits;
+}
+
+function PhoneActions({ phone }) {
+  const normalized = normalizePhone(phone);
+  if (!normalized) return <span>{phone || "-"}</span>;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span>{phone}</span>
+      <a
+        href={`tel:+${normalized}`}
+        title="Call"
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 shrink-0"
+      >
+        <Phone size={12} strokeWidth={2.5} />
+      </a>
+      <a
+        href={`https://wa.me/${normalized}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="WhatsApp"
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 shrink-0"
+      >
+        <MessageCircle size={12} strokeWidth={2.5} />
+      </a>
+    </span>
+  );
+}
 
 const emptyForm = {
   serial: "",
@@ -319,7 +361,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                       <td className="p-3">{r.entry_date || "-"}</td>
                       <td className="p-3">{r.executive_name || "-"}</td>
                       <td className="p-3 font-medium">{r.company_name}</td>
-                      <td className="p-3">{r.phone_number || "-"}</td>
+                      <td className="p-3"><PhoneActions phone={r.phone_number} /></td>
                       <td className="p-3">{r.location || "-"}</td>
                       <td className="p-3 text-right num">{fmt(r.received_amount)}</td>
                       <td className="p-3 text-right num">{fmt(r.due_amount)}</td>
@@ -364,6 +406,9 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                       <p className="font-semibold">{r.company_name}</p>
                       <p className="text-xs text-slate-500">
                         {r.executive_name} · {r.location}
+                      </p>
+                      <p className="text-xs text-slate-600 mt-1">
+                        <PhoneActions phone={r.phone_number} />
                       </p>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${BADGE_TONE[priority]}`}>
