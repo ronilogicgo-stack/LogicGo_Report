@@ -108,6 +108,7 @@ export default function AdminDashboard() {
       acc.collection_achievement += r.summary.collection_achievement;
       acc.collection_gap += r.summary.collection_gap;
       acc.sales_return += r.summary.sales_return;
+      acc.other_transaction += r.summary.other_transaction;
       acc.net_sales += r.summary.net_sales;
       return acc;
     },
@@ -118,6 +119,7 @@ export default function AdminDashboard() {
       collection_achievement: 0,
       collection_gap: 0,
       sales_return: 0,
+      other_transaction: 0,
       net_sales: 0,
     }
   );
@@ -133,6 +135,7 @@ export default function AdminDashboard() {
       "Collection Achievement",
       "Collection Gap",
       "Sales Return",
+      "Other Transaction",
       "Net Sales",
       "Dues Recovery",
       "Closing Dues",
@@ -148,6 +151,7 @@ export default function AdminDashboard() {
       r.summary.collection_achievement,
       r.summary.collection_gap,
       r.summary.sales_return,
+      r.summary.other_transaction,
       r.summary.net_sales,
       r.summary.dues_recovery,
       r.summary.closing_dues,
@@ -193,6 +197,7 @@ export default function AdminDashboard() {
                   <th className="p-3 text-right">Collection Achv.</th>
                   <th className="p-3 text-right">Gap</th>
                   <th className="p-3 text-right">Sales Return</th>
+                  <th className="p-3 text-right">Other Tran.</th>
                   <th className="p-3 text-right">Net Sales</th>
                   <th className="p-3 text-right">Dues Recovery</th>
                   <th className="p-3 text-right">Closing Dues</th>
@@ -256,6 +261,7 @@ export default function AdminDashboard() {
                         </td>
                         <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.other_transaction)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.dues_recovery)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
@@ -284,6 +290,7 @@ export default function AdminDashboard() {
                         </td>
                         <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
+                        <td className="p-3 text-right">{fmt(r.summary.other_transaction)}</td>
                         <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
                         <td className="p-3 text-right">
                           {fmt(r.summary.dues_recovery)}
@@ -328,6 +335,7 @@ export default function AdminDashboard() {
                   <td className="p-3 text-right">{fmt(grandTotal.collection_achievement)}</td>
                   <td className="p-3 text-right">{fmt(grandTotal.collection_gap)}</td>
                   <td className="p-3 text-right">{fmt(grandTotal.sales_return)}</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.other_transaction)}</td>
                   <td className="p-3 text-right">{fmt(grandTotal.net_sales)}</td>
                   <td className="p-3"></td>
                   <td className="p-3"></td>
@@ -410,6 +418,7 @@ export default function AdminDashboard() {
                       />
                       <StatRow label="Gap" value={fmt(r.summary.collection_gap)} />
                       <StatRow label="Sales Return" value={fmt(r.summary.sales_return)} />
+                      <StatRow label="Other Tran." value={fmt(r.summary.other_transaction)} />
                       <StatRow label="Net Sales" value={fmt(r.summary.net_sales)} bold />
                       <StatRow
                         label="Dues Recovery"
@@ -467,6 +476,11 @@ export default function AdminDashboard() {
                 <StatRow
                   label="Sales Return"
                   value={fmt(grandTotal.sales_return)}
+                  dark
+                />
+                <StatRow
+                  label="Other Tran."
+                  value={fmt(grandTotal.other_transaction)}
                   dark
                 />
                 <StatRow label="Net Sales" value={fmt(grandTotal.net_sales)} dark bold />

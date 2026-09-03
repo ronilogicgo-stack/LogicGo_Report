@@ -48,6 +48,7 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
               <th className="p-3 text-right">Collections</th>
               <th className="p-3 text-right">Collection Gap</th>
               <th className="p-3 text-right">Sales Return</th>
+              <th className="p-3 text-right">Other Tran.</th>
               <th className="p-3 text-right">Net Sales</th>
               <th className="p-3">Remarks</th>
               {onEdit && <th className="p-3"></th>}
@@ -69,6 +70,10 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
                 <td className={`p-3 text-right ${cellClass(e, "sales_return")}`}>
                   {fmt(e.sales_return)}
                   <EditBadge count={editCount(e, "sales_return")} />
+                </td>
+                <td className={`p-3 text-right ${cellClass(e, "other_transaction")}`}>
+                  {fmt(e.other_transaction)}
+                  <EditBadge count={editCount(e, "other_transaction")} />
                 </td>
                 <td className="p-3 text-right">{fmt(e.net_sales)}</td>
                 <td className={`p-3 ${cellClass(e, "remarks")}`}>
@@ -116,6 +121,11 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
               <span className={`text-right ${cellClass(e, "sales_return")}`}>
                 {fmt(e.sales_return)}
                 <EditBadge count={editCount(e, "sales_return")} />
+              </span>
+              <span>Other Transaction</span>
+              <span className={`text-right ${cellClass(e, "other_transaction")}`}>
+                {fmt(e.other_transaction)}
+                <EditBadge count={editCount(e, "other_transaction")} />
               </span>
             </div>
             {e.remarks && (

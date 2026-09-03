@@ -59,13 +59,16 @@ create table if not exists public.daily_entries (
   sales numeric not null default 0,
   collections numeric not null default 0,
   sales_return numeric not null default 0,
+  other_transaction numeric not null default 0,
   remarks text default '',
   net_sales numeric generated always as (sales - sales_return) stored,
   collection_gap numeric generated always as ((sales - sales_return) - collections) stored,
-  -- Per-field edit counters, e.g. {"sales":0,"collections":2,"sales_return":1,"remarks":0}
+  -- Per-field edit counters, e.g. {"sales":0,"collections":2,"sales_return":1,"remarks":0,"other_transaction":0}
   -- Only the exact field that changes gets its counter bumped, so the UI
   -- can highlight just that one cell in red - not the whole row.
-  field_edits jsonb not null default '{"sales":0,"collections":0,"sales_return":0,"remarks":0}'::jsonb,
+  field_edits jsonb not null default jsonb_build_object(
+    'sales', 0, 'collections', 0, 'sales_return', 0, 'remarks', 0, 'other_transaction', 0
+  ),
   last_edited_at timestamptz,
   last_edited_by uuid references public.profiles(id),
   created_at timestamptz default now(),
@@ -84,25 +87,33 @@ declare
   fe jsonb;
   changed boolean := false;
 begin
-  fe := coalesce(old.field_edits, '{"sales":0,"collections":0,"sales_return":0,"remarks":0}'::jsonb);
+  fe := coalesce(
+    old.field_edits,
+    jsonb_build_object('sales', 0, 'collections', 0, 'sales_return', 0, 'remarks', 0, 'other_transaction', 0)
+  );
 
   if old.sales is distinct from new.sales then
-    fe := jsonb_set(fe, '{sales}', to_jsonb(coalesce((fe->>'sales')::int, 0) + 1));
+    fe := jsonb_set(fe, array['sales'], to_jsonb(coalesce((fe->>'sales')::int, 0) + 1));
     changed := true;
   end if;
 
   if old.collections is distinct from new.collections then
-    fe := jsonb_set(fe, '{collections}', to_jsonb(coalesce((fe->>'collections')::int, 0) + 1));
+    fe := jsonb_set(fe, array['collections'], to_jsonb(coalesce((fe->>'collections')::int, 0) + 1));
     changed := true;
   end if;
 
   if old.sales_return is distinct from new.sales_return then
-    fe := jsonb_set(fe, '{sales_return}', to_jsonb(coalesce((fe->>'sales_return')::int, 0) + 1));
+    fe := jsonb_set(fe, array['sales_return'], to_jsonb(coalesce((fe->>'sales_return')::int, 0) + 1));
     changed := true;
   end if;
 
   if old.remarks is distinct from new.remarks then
-    fe := jsonb_set(fe, '{remarks}', to_jsonb(coalesce((fe->>'remarks')::int, 0) + 1));
+    fe := jsonb_set(fe, array['remarks'], to_jsonb(coalesce((fe->>'remarks')::int, 0) + 1));
+    changed := true;
+  end if;
+
+  if old.other_transaction is distinct from new.other_transaction then
+    fe := jsonb_set(fe, array['other_transaction'], to_jsonb(coalesce((fe->>'other_transaction')::int, 0) + 1));
     changed := true;
   end if;
 
@@ -364,6 +375,7 @@ select
   sum(collections) as total_collections,
   sum(sales_return) as total_sales_return,
   sum(net_sales) as total_net_sales,
+  sum(other_transaction) as total_other_transaction,
   count(*) as days_reported
 from public.daily_entries
 group by user_id, date_trunc('month', entry_date);

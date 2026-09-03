@@ -149,18 +149,18 @@ export default function TeamManagementPage() {
       supabase
         .from("daily_entries")
         .select(
-          "entry_date, sales, collections, sales_return, net_sales, collection_gap, remarks"
+          "entry_date, sales, collections, sales_return, other_transaction, net_sales, collection_gap, remarks"
         )
         .eq("user_id", person.id)
         .order("entry_date", { ascending: true })
     );
 
     const header =
-      "Date,Sales,Collections,Sales Return,Net Sales,Collection Gap,Remarks\n";
+      "Date,Sales,Collections,Sales Return,Other Transaction,Net Sales,Collection Gap,Remarks\n";
     const rows = entries
       .map(
         (e) =>
-          `${e.entry_date},${e.sales},${e.collections},${e.sales_return},${e.net_sales},${e.collection_gap},"${(
+          `${e.entry_date},${e.sales},${e.collections},${e.sales_return},${e.other_transaction},${e.net_sales},${e.collection_gap},"${(
             e.remarks || ""
           ).replace(/"/g, '""')}"`
       )

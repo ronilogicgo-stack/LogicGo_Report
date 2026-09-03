@@ -12,6 +12,7 @@ const emptyForm = {
   sales: "",
   collections: "",
   sales_return: "",
+  other_transaction: "",
   remarks: "",
 };
 
@@ -38,6 +39,7 @@ export default function DailyEntryForm({ userId, editingEntry, onSaved, onCancel
         sales: editingEntry.sales ?? "",
         collections: editingEntry.collections ?? "",
         sales_return: editingEntry.sales_return ?? "",
+        other_transaction: editingEntry.other_transaction ?? "",
         remarks: editingEntry.remarks ?? "",
       });
     }
@@ -55,6 +57,7 @@ export default function DailyEntryForm({ userId, editingEntry, onSaved, onCancel
         sales: Number(form.sales) || 0,
         collections: Number(form.collections) || 0,
         sales_return: Number(form.sales_return) || 0,
+        other_transaction: Number(form.other_transaction) || 0,
         remarks: form.remarks,
       },
       { onConflict: "user_id,entry_date" }
@@ -100,7 +103,7 @@ export default function DailyEntryForm({ userId, editingEntry, onSaved, onCancel
 
       <form
         onSubmit={handleSubmit}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3"
       >
         <input
           type="date"
@@ -135,13 +138,21 @@ export default function DailyEntryForm({ userId, editingEntry, onSaved, onCancel
           onChange={(e) => setForm({ ...form, sales_return: e.target.value })}
         />
         <input
+          type="number"
+          inputMode="decimal"
+          placeholder="Other Transaction"
+          className="border rounded-lg px-3 py-2 text-base"
+          value={form.other_transaction}
+          onChange={(e) => setForm({ ...form, other_transaction: e.target.value })}
+        />
+        <input
           type="text"
           placeholder="Remarks"
           className="border rounded-lg px-3 py-2 text-base"
           value={form.remarks}
           onChange={(e) => setForm({ ...form, remarks: e.target.value })}
         />
-        <div className="col-span-1 sm:col-span-2 lg:col-span-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="col-span-1 sm:col-span-2 lg:col-span-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm text-gray-500">
             Collection Gap:{" "}
             <span className="font-semibold">

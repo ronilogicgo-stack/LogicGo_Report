@@ -112,6 +112,10 @@ export default function DailyReportPage() {
       const sales = myEntries.reduce((s, e) => s + (Number(e.sales) || 0), 0);
       const collections = myEntries.reduce((s, e) => s + (Number(e.collections) || 0), 0);
       const salesReturn = myEntries.reduce((s, e) => s + (Number(e.sales_return) || 0), 0);
+      const otherTransaction = myEntries.reduce(
+        (s, e) => s + (Number(e.other_transaction) || 0),
+        0
+      );
       const net = netSales(sales, salesReturn);
       return {
         sl: i + 1,
@@ -120,6 +124,7 @@ export default function DailyReportPage() {
         collections,
         gap: net - collections,
         salesReturn,
+        otherTransaction,
         netSales: net,
         reported: myEntries.length > 0,
         daysReported: myEntries.length,
@@ -163,10 +168,11 @@ export default function DailyReportPage() {
       acc.collections += r.collections;
       acc.gap += r.gap;
       acc.salesReturn += r.salesReturn;
+      acc.otherTransaction += r.otherTransaction;
       acc.netSales += r.netSales;
       return acc;
     },
-    { sales: 0, collections: 0, gap: 0, salesReturn: 0, netSales: 0 }
+    { sales: 0, collections: 0, gap: 0, salesReturn: 0, otherTransaction: 0, netSales: 0 }
   );
 
   const forecastTotals = useMemo(() => {
@@ -190,6 +196,7 @@ export default function DailyReportPage() {
       "Collections Achievement",
       "Gap",
       "Sales Return",
+      "Other Transaction",
       "Net Sales",
     ];
     const csvRows = rows.map((r) => [
@@ -201,6 +208,7 @@ export default function DailyReportPage() {
       r.collections,
       r.gap,
       r.salesReturn,
+      r.otherTransaction,
       r.netSales,
     ]);
     const filename =
@@ -300,6 +308,7 @@ export default function DailyReportPage() {
                   <th className="p-3 text-right">Collections Achievement</th>
                   <th className="p-3 text-right">Gap</th>
                   <th className="p-3 text-right">Sales Return</th>
+                  <th className="p-3 text-right">Other Tran.</th>
                   <th className="p-3 text-right">Net Sales</th>
                 </tr>
               </thead>
@@ -323,6 +332,7 @@ export default function DailyReportPage() {
                     <td className="p-3 text-right">{fmt(r.collections)}</td>
                     <td className="p-3 text-right">{fmt(r.gap)}</td>
                     <td className="p-3 text-right">{fmt(r.salesReturn)}</td>
+                    <td className="p-3 text-right">{fmt(r.otherTransaction)}</td>
                     <td className="p-3 text-right font-medium">{fmt(r.netSales)}</td>
                   </tr>
                 ))}
@@ -336,6 +346,7 @@ export default function DailyReportPage() {
                   <td className="p-3 text-right">{fmt(grandTotal.collections)}</td>
                   <td className="p-3 text-right">{fmt(grandTotal.gap)}</td>
                   <td className="p-3 text-right">{fmt(grandTotal.salesReturn)}</td>
+                  <td className="p-3 text-right">{fmt(grandTotal.otherTransaction)}</td>
                   <td className="p-3 text-right">{fmt(grandTotal.netSales)}</td>
                 </tr>
               </tfoot>
@@ -373,6 +384,8 @@ export default function DailyReportPage() {
                   <span className="text-right">{fmt(r.gap)}</span>
                   <span>Sales Return</span>
                   <span className="text-right">{fmt(r.salesReturn)}</span>
+                  <span>Other Transaction</span>
+                  <span className="text-right">{fmt(r.otherTransaction)}</span>
                   <span className="font-medium text-gray-800">Net Sales</span>
                   <span className="text-right font-medium text-gray-800">
                     {fmt(r.netSales)}
@@ -399,6 +412,8 @@ export default function DailyReportPage() {
                 <span className="text-right">{fmt(grandTotal.gap)}</span>
                 <span className="text-gray-300">Sales Return</span>
                 <span className="text-right">{fmt(grandTotal.salesReturn)}</span>
+                <span className="text-gray-300">Other Tran.</span>
+                <span className="text-right">{fmt(grandTotal.otherTransaction)}</span>
                 <span className="font-medium">Net Sales</span>
                 <span className="text-right font-medium">{fmt(grandTotal.netSales)}</span>
               </div>

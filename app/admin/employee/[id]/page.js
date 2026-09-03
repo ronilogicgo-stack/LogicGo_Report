@@ -68,13 +68,14 @@ export default function EmployeeDetailPage() {
   const reportedDays = entries.length;
 
   function exportCSV() {
-    const headers = ["Date", "Sales", "Collections", "Collection Gap", "Sales Return", "Net Sales", "Remarks"];
+    const headers = ["Date", "Sales", "Collections", "Collection Gap", "Sales Return", "Other Transaction", "Net Sales", "Remarks"];
     const csvRows = entries.map((e) => [
       e.entry_date,
       e.sales,
       e.collections,
       e.collection_gap,
       e.sales_return,
+      e.other_transaction,
       e.net_sales,
       e.remarks || "",
     ]);
@@ -153,6 +154,7 @@ export default function EmployeeDetailPage() {
           />
           <SummaryCard label="Collection Gap" value={fmt(summary.collection_gap)} />
           <SummaryCard label="Sales Return" value={fmt(summary.sales_return)} />
+        <SummaryCard label="Other Transaction" value={fmt(summary.other_transaction)} />
           <SummaryCard label="Net Sales" value={fmt(summary.net_sales)} highlight />
           <SummaryCard
             label="Dues Recovery"

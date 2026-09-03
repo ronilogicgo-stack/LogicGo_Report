@@ -75,6 +75,22 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v21
+- **New field: Other Transaction.** A free-form daily adjustment
+  (bonus, write-off, correction, etc. - positive or negative) added to
+  the Daily Entry form, Entry History table, Admin dashboard, Daily
+  Report, employee detail page, Sales Person dashboard, and every
+  CSV export. It's tracked and highlighted on edit exactly like Sales,
+  Collections, Sales Return, and Remarks.
+- **Updated formulas** to include it, matching the reference "SR Wise
+  Statement" report:
+  ```
+  Closing Dues  = Opening Dues + Net Sales - Collections + Other Transaction
+  Dues Recovery = Collections - Net Sales - Other Transaction
+  ```
+  Net Sales and Collection Gap are unaffected - they stay purely
+  Sales/Collections/Sales-Return based, exactly as before.
+
 ## What's new in v20 (visual only, calculations unchanged)
 - **"Above target" green highlight**, to match v19's red "below
   target" flag. Sales/Collection Achievement now turns green when it
