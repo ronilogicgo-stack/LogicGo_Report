@@ -12,6 +12,7 @@ export default function DashboardLayout({ children }) {
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [alsoAdmin, setAlsoAdmin] = useState(false);
+  const [hasFollowupAccess, setHasFollowupAccess] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
 
   useEffect(() => {
@@ -52,6 +53,14 @@ export default function DashboardLayout({ children }) {
       setName(profile.full_name);
       setAvatarUrl(profile.avatar_url || null);
       setAlsoAdmin(!!profile.is_admin);
+
+      const { data: grants } = await supabase
+        .from("payment_followup_access")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .limit(1);
+      setHasFollowupAccess(!!grants && grants.length > 0);
+
       setChecked(true);
     }
     check();
@@ -100,6 +109,14 @@ export default function DashboardLayout({ children }) {
           >
             My Profile
           </Link>
+          {hasFollowupAccess && (
+            <Link
+              href="/payment-followup"
+              className="text-sm text-indigo-100 hover:text-white"
+            >
+              Payment Follow-Up
+            </Link>
+          )}
           {alsoAdmin && (
             <Link
               href="/admin"

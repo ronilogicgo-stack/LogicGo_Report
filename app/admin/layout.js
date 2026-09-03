@@ -98,6 +98,12 @@ export default function AdminLayout({ children }) {
             Analytics
           </Link>
           <Link
+            href="/admin/payment-followup"
+            className="text-sm text-indigo-100 hover:text-white"
+          >
+            Payment Follow-Up
+          </Link>
+          <Link
             href="/admin/settings"
             className="text-sm text-indigo-100 hover:text-white"
           >

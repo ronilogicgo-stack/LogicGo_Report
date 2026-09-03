@@ -75,6 +75,41 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v23 - Payment Follow-Up module
+- **Branch-wise Payment Follow-Up tracker**, replacing the Google
+  Sheet + Apps Script version. Same idea: each record (company/client)
+  can have up to 5 follow-up dates, and the list automatically sorts
+  itself:
+  - 🔴 **Overdue** - payment still Due and the latest follow-up date
+    has arrived or passed - shown first.
+  - 🟡 **Due tomorrow** - latest follow-up date is tomorrow - shown next.
+  - **On track** - everything else, sorted by serial number.
+
+  Unlike the spreadsheet version, there's no locking or physical row
+  reordering needed - the app just sorts fresh on every page load, so
+  multiple people can use it at once with no conflicts.
+- **Per-branch team access** (Admin -> "Payment Follow-Up" -> "Manage
+  Team Access"). Grant any team member **Editor** (can add/edit/delete
+  records) or **Viewer** (read-only) access to one specific branch -
+  completely separate from their Sales Person/Admin role. A team
+  member with access sees a "Payment Follow-Up" link on their own
+  dashboard leading to just the branch(es) they've been granted.
+- **Admin can add new branches** any time (Head Office, Sylhet, and
+  Rangpur are pre-loaded from your existing spreadsheet - see setup
+  step below).
+- CSV/PDF export included, same as every other report.
+
+### One-time setup for v23
+1. Run `migration_v23.sql` in the Supabase SQL Editor (creates the
+   branches, records table, and access-control tables/policies).
+2. Run `seed_payment_followups.sql` right after it, in the same SQL
+   Editor, to import all 252 existing records from your spreadsheet
+   (Head Office, Sylhet, and Rangpur) exactly as they were. It's safe
+   to run more than once - it skips rows that are already there.
+3. Push the new app code and redeploy.
+4. As Admin, go to "Payment Follow-Up" -> "Manage Team Access" to grant
+   your team members access to their branch(es).
+
 ## What's new in v22 (visual design refresh)
 - **New typography**: Inter for interface text, and a monospaced
   numeral font (JetBrains Mono) for every money/number figure across
