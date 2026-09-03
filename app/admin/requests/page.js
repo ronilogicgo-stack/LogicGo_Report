@@ -259,7 +259,7 @@ export default function TeamManagementPage() {
         ) : pending.length === 0 ? (
           <p className="text-gray-500">No pending requests.</p>
         ) : (
-          <div className="bg-white rounded-xl shadow divide-y">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm divide-y">
             {pending.map((p) => (
               <div
                 key={p.id}
@@ -345,7 +345,7 @@ export default function TeamManagementPage() {
         ) : (
           <div className="space-y-3">
             {filteredTeam.map((p) => (
-              <div key={p.id} className="bg-white rounded-xl shadow p-4 space-y-3">
+              <div key={p.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
                 {p.email_change_pending && (
                   <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span>

@@ -31,7 +31,7 @@ export default function AdminSettingsPage() {
     <div className="max-w-lg mx-auto space-y-6">
       <h1 className="text-lg sm:text-xl font-bold">Settings</h1>
 
-      <div className="bg-white rounded-xl shadow p-4 sm:p-6 space-y-3">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-3">
         <h2 className="font-semibold text-sm">Company Logo</h2>
         <p className="text-xs text-gray-400">
           Shown at the top of every page for both Admins and Sales Persons.

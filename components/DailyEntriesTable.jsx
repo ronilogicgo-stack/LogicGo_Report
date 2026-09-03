@@ -44,17 +44,17 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
   return (
     <>
       {/* ---------- DESKTOP: table ---------- */}
-      <div className="hidden md:block bg-white rounded-xl shadow overflow-x-auto">
+      <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 text-left">
             <tr>
               <th className="p-3">Date</th>
-              <th className="p-3 text-right">Sales</th>
-              <th className="p-3 text-right">Collections</th>
-              <th className="p-3 text-right">Collection Gap</th>
-              <th className="p-3 text-right">Sales Return</th>
-              <th className="p-3 text-right">Other Tran.</th>
-              <th className="p-3 text-right">Net Sales</th>
+              <th className="p-3 text-right num">Sales</th>
+              <th className="p-3 text-right num">Collections</th>
+              <th className="p-3 text-right num">Collection Gap</th>
+              <th className="p-3 text-right num">Sales Return</th>
+              <th className="p-3 text-right num">Other Tran.</th>
+              <th className="p-3 text-right num">Net Sales</th>
               <th className="p-3">Remarks</th>
               {onEdit && <th className="p-3"></th>}
             </tr>
@@ -63,24 +63,24 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
             {entries.map((e) => (
               <tr key={e.id} className="border-t">
                 <td className="p-3">{e.entry_date}</td>
-                <td className={`p-3 text-right ${cellClass(e, "sales")}`}>
+                <td className={`p-3 text-right num ${cellClass(e, "sales")}`}>
                   {fmt(e.sales)}
                   <EditBadge count={editCount(e, "sales")} />
                 </td>
-                <td className={`p-3 text-right ${cellClass(e, "collections")}`}>
+                <td className={`p-3 text-right num ${cellClass(e, "collections")}`}>
                   {fmt(e.collections)}
                   <EditBadge count={editCount(e, "collections")} />
                 </td>
-                <td className="p-3 text-right">{fmt(e.collection_gap)}</td>
-                <td className={`p-3 text-right ${cellClass(e, "sales_return")}`}>
+                <td className="p-3 text-right num">{fmt(e.collection_gap)}</td>
+                <td className={`p-3 text-right num ${cellClass(e, "sales_return")}`}>
                   {fmt(e.sales_return)}
                   <EditBadge count={editCount(e, "sales_return")} />
                 </td>
-                <td className={`p-3 text-right ${cellClass(e, "other_transaction")}`}>
+                <td className={`p-3 text-right num ${cellClass(e, "other_transaction")}`}>
                   {fmt(e.other_transaction)}
                   <EditBadge count={editCount(e, "other_transaction")} />
                 </td>
-                <td className="p-3 text-right">{fmt(e.net_sales)}</td>
+                <td className="p-3 text-right num">{fmt(e.net_sales)}</td>
                 <td className={`p-3 ${cellClass(e, "remarks")}`}>
                   {e.remarks}
                   <EditBadge count={editCount(e, "remarks")} />
@@ -104,31 +104,31 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
       {/* ---------- MOBILE: stacked cards ---------- */}
       <div className="md:hidden space-y-3">
         {entries.map((e) => (
-          <div key={e.id} className="bg-white rounded-xl shadow p-4">
+          <div key={e.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="font-semibold">{e.entry_date}</p>
               <p className="text-sm font-semibold">{fmt(e.net_sales)} Net</p>
             </div>
             <div className="grid grid-cols-2 gap-y-1 text-sm text-gray-600">
               <span>Sales</span>
-              <span className={`text-right ${cellClass(e, "sales")}`}>
+              <span className={`text-right num ${cellClass(e, "sales")}`}>
                 {fmt(e.sales)}
                 <EditBadge count={editCount(e, "sales")} />
               </span>
               <span>Collections</span>
-              <span className={`text-right ${cellClass(e, "collections")}`}>
+              <span className={`text-right num ${cellClass(e, "collections")}`}>
                 {fmt(e.collections)}
                 <EditBadge count={editCount(e, "collections")} />
               </span>
               <span>Collection Gap</span>
-              <span className="text-right">{fmt(e.collection_gap)}</span>
+              <span className="text-right num">{fmt(e.collection_gap)}</span>
               <span>Sales Return</span>
-              <span className={`text-right ${cellClass(e, "sales_return")}`}>
+              <span className={`text-right num ${cellClass(e, "sales_return")}`}>
                 {fmt(e.sales_return)}
                 <EditBadge count={editCount(e, "sales_return")} />
               </span>
               <span>Other Transaction</span>
-              <span className={`text-right ${cellClass(e, "other_transaction")}`}>
+              <span className={`text-right num ${cellClass(e, "other_transaction")}`}>
                 {fmt(e.other_transaction)}
                 <EditBadge count={editCount(e, "other_transaction")} />
               </span>

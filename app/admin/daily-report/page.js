@@ -255,7 +255,7 @@ export default function DailyReportPage() {
           />
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl shadow p-4">
+        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <label className="text-sm text-gray-500">
             From
             <input
@@ -296,20 +296,20 @@ export default function DailyReportPage() {
       ) : (
         <div className="print-area">
           {/* ---------- DESKTOP: table ---------- */}
-          <div className="hidden md:block bg-white rounded-xl shadow overflow-x-auto">
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-gray-100 text-left">
                 <tr>
                   <th className="p-3">SL</th>
                   <th className="p-3">Sales Person</th>
                   <th className="p-3">Location</th>
-                  {mode === "range" && <th className="p-3 text-right">Days Reported</th>}
-                  <th className="p-3 text-right">Sales Achievement</th>
-                  <th className="p-3 text-right">Collections Achievement</th>
-                  <th className="p-3 text-right">Gap</th>
-                  <th className="p-3 text-right">Sales Return</th>
-                  <th className="p-3 text-right">Other Tran.</th>
-                  <th className="p-3 text-right">Net Sales</th>
+                  {mode === "range" && <th className="p-3 text-right num">Days Reported</th>}
+                  <th className="p-3 text-right num">Sales Achievement</th>
+                  <th className="p-3 text-right num">Collections Achievement</th>
+                  <th className="p-3 text-right num">Gap</th>
+                  <th className="p-3 text-right num">Sales Return</th>
+                  <th className="p-3 text-right num">Other Tran.</th>
+                  <th className="p-3 text-right num">Net Sales</th>
                 </tr>
               </thead>
               <tbody>
@@ -326,14 +326,14 @@ export default function DailyReportPage() {
                     </td>
                     <td className="p-3">{r.person.location}</td>
                     {mode === "range" && (
-                      <td className="p-3 text-right">{r.daysReported}</td>
+                      <td className="p-3 text-right num">{r.daysReported}</td>
                     )}
-                    <td className="p-3 text-right">{fmt(r.sales)}</td>
-                    <td className="p-3 text-right">{fmt(r.collections)}</td>
-                    <td className="p-3 text-right">{fmt(r.gap)}</td>
-                    <td className="p-3 text-right">{fmt(r.salesReturn)}</td>
-                    <td className="p-3 text-right">{fmt(r.otherTransaction)}</td>
-                    <td className="p-3 text-right font-medium">{fmt(r.netSales)}</td>
+                    <td className="p-3 text-right num">{fmt(r.sales)}</td>
+                    <td className="p-3 text-right num">{fmt(r.collections)}</td>
+                    <td className="p-3 text-right num">{fmt(r.gap)}</td>
+                    <td className="p-3 text-right num">{fmt(r.salesReturn)}</td>
+                    <td className="p-3 text-right num">{fmt(r.otherTransaction)}</td>
+                    <td className="p-3 text-right num font-medium">{fmt(r.netSales)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -342,12 +342,12 @@ export default function DailyReportPage() {
                   <td className="p-3" colSpan={mode === "range" ? 4 : 3}>
                     Grand Total
                   </td>
-                  <td className="p-3 text-right">{fmt(grandTotal.sales)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.collections)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.gap)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.salesReturn)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.otherTransaction)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.netSales)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.sales)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.collections)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.gap)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.salesReturn)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.otherTransaction)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.netSales)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -358,7 +358,7 @@ export default function DailyReportPage() {
             {rows.map((r) => (
               <div
                 key={r.person.id}
-                className={`bg-white rounded-xl shadow p-4 ${!r.reported ? "opacity-60" : ""}`}
+                className={`bg-white rounded-xl border border-slate-200 shadow-sm p-4 ${!r.reported ? "opacity-60" : ""}`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <Link
@@ -373,21 +373,21 @@ export default function DailyReportPage() {
                   {mode === "range" && (
                     <>
                       <span>Days Reported</span>
-                      <span className="text-right">{r.daysReported}</span>
+                      <span className="text-right num">{r.daysReported}</span>
                     </>
                   )}
                   <span>Sales</span>
-                  <span className="text-right">{fmt(r.sales)}</span>
+                  <span className="text-right num">{fmt(r.sales)}</span>
                   <span>Collections</span>
-                  <span className="text-right">{fmt(r.collections)}</span>
+                  <span className="text-right num">{fmt(r.collections)}</span>
                   <span>Gap</span>
-                  <span className="text-right">{fmt(r.gap)}</span>
+                  <span className="text-right num">{fmt(r.gap)}</span>
                   <span>Sales Return</span>
-                  <span className="text-right">{fmt(r.salesReturn)}</span>
+                  <span className="text-right num">{fmt(r.salesReturn)}</span>
                   <span>Other Transaction</span>
-                  <span className="text-right">{fmt(r.otherTransaction)}</span>
+                  <span className="text-right num">{fmt(r.otherTransaction)}</span>
                   <span className="font-medium text-gray-800">Net Sales</span>
-                  <span className="text-right font-medium text-gray-800">
+                  <span className="text-right num font-medium text-gray-800">
                     {fmt(r.netSales)}
                   </span>
                 </div>
@@ -401,27 +401,27 @@ export default function DailyReportPage() {
               </div>
             ))}
 
-            <div className="bg-gray-900 text-white rounded-xl shadow p-4">
+            <div className="bg-gray-900 text-white rounded-xl border border-slate-200 shadow-sm p-4">
               <p className="font-semibold mb-2">Grand Total</p>
               <div className="grid grid-cols-2 gap-y-1 text-sm">
                 <span className="text-gray-300">Sales</span>
-                <span className="text-right">{fmt(grandTotal.sales)}</span>
+                <span className="text-right num">{fmt(grandTotal.sales)}</span>
                 <span className="text-gray-300">Collections</span>
-                <span className="text-right">{fmt(grandTotal.collections)}</span>
+                <span className="text-right num">{fmt(grandTotal.collections)}</span>
                 <span className="text-gray-300">Gap</span>
-                <span className="text-right">{fmt(grandTotal.gap)}</span>
+                <span className="text-right num">{fmt(grandTotal.gap)}</span>
                 <span className="text-gray-300">Sales Return</span>
-                <span className="text-right">{fmt(grandTotal.salesReturn)}</span>
+                <span className="text-right num">{fmt(grandTotal.salesReturn)}</span>
                 <span className="text-gray-300">Other Tran.</span>
-                <span className="text-right">{fmt(grandTotal.otherTransaction)}</span>
+                <span className="text-right num">{fmt(grandTotal.otherTransaction)}</span>
                 <span className="font-medium">Net Sales</span>
-                <span className="text-right font-medium">{fmt(grandTotal.netSales)}</span>
+                <span className="text-right num font-medium">{fmt(grandTotal.netSales)}</span>
               </div>
             </div>
           </div>
 
           {/* ---------- CHART: Net Sales by Sales Person (this day) ---------- */}
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">
               Net Sales by Sales Person - {from}
               {from !== to && ` to ${to}`}
@@ -480,7 +480,7 @@ export default function DailyReportPage() {
               />
             </div>
 
-            <div className="bg-white rounded-xl shadow p-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
               <h3 className="text-sm font-semibold text-gray-700 mb-2">
                 Achieved So Far vs Projected Remaining (per Sales Person)
               </h3>
@@ -531,9 +531,9 @@ export default function DailyReportPage() {
 
 function ForecastCard({ label, value, color }) {
   return (
-    <div className={`rounded-xl shadow p-4 text-white ${color}`}>
+    <div className={`rounded-xl border border-slate-200 shadow-sm p-4 text-white ${color}`}>
       <p className="text-xs text-white/80">{label}</p>
-      <p className="text-lg font-bold mt-1">{value}</p>
+      <p className="text-lg font-bold mt-1 num">{value}</p>
     </div>
   );
 }

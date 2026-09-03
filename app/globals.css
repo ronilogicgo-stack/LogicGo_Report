@@ -3,7 +3,17 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui), Arial, Helvetica, sans-serif;
+}
+
+/* Financial figures use a monospaced numeral font - it keeps digits
+   the same width so columns of money line up visually, and gives the
+   dashboard a distinct, deliberate "ledger" feel instead of looking
+   like a generic template. Applied via the .num utility class. */
+.num {
+  font-family: var(--font-numeric), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 /* Every report page wraps its printable content in a `.print-area` div.

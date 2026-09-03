@@ -184,23 +184,23 @@ export default function AdminDashboard() {
       ) : (
         <div className="print-area">
           {/* ---------- DESKTOP: full table ---------- */}
-          <div className="hidden lg:block overflow-x-auto bg-white rounded-xl shadow">
+          <div className="hidden lg:block overflow-x-auto bg-white rounded-xl border border-slate-200 shadow-sm">
             <table className="min-w-full text-sm">
               <thead className="bg-gray-100 text-left">
                 <tr>
                   <th className="p-3">Sales Person</th>
                   <th className="p-3">Location</th>
-                  <th className="p-3 text-right">Opening Dues</th>
-                  <th className="p-3 text-right">Sales Target</th>
-                  <th className="p-3 text-right">Sales Achv.</th>
-                  <th className="p-3 text-right">Collection Target</th>
-                  <th className="p-3 text-right">Collection Achv.</th>
-                  <th className="p-3 text-right">Gap</th>
-                  <th className="p-3 text-right">Sales Return</th>
-                  <th className="p-3 text-right">Other Tran.</th>
-                  <th className="p-3 text-right">Net Sales</th>
-                  <th className="p-3 text-right">Dues Recovery</th>
-                  <th className="p-3 text-right">Closing Dues</th>
+                  <th className="p-3 text-right num">Opening Dues</th>
+                  <th className="p-3 text-right num">Sales Target</th>
+                  <th className="p-3 text-right num">Sales Achv.</th>
+                  <th className="p-3 text-right num">Collection Target</th>
+                  <th className="p-3 text-right num">Collection Achv.</th>
+                  <th className="p-3 text-right num">Gap</th>
+                  <th className="p-3 text-right num">Sales Return</th>
+                  <th className="p-3 text-right num">Other Tran.</th>
+                  <th className="p-3 text-right num">Net Sales</th>
+                  <th className="p-3 text-right num">Dues Recovery</th>
+                  <th className="p-3 text-right num">Closing Dues</th>
                   <th className="p-3">Status</th>
                   <th className="p-3"></th>
                 </tr>
@@ -240,7 +240,7 @@ export default function AdminDashboard() {
                             }
                           />
                         </td>
-                        <td className={`p-3 text-right ${achvClass(r.summary.sales_achievement, r.summary.sales_target)}`}>
+                        <td className={`p-3 text-right num ${achvClass(r.summary.sales_achievement, r.summary.sales_target)}`}>
                           {fmt(r.summary.sales_achievement)}
                         </td>
                         <td className="p-2">
@@ -256,15 +256,15 @@ export default function AdminDashboard() {
                             }
                           />
                         </td>
-                        <td className={`p-3 text-right ${achvClass(r.summary.collection_achievement, r.summary.collection_target)}`}>
+                        <td className={`p-3 text-right num ${achvClass(r.summary.collection_achievement, r.summary.collection_target)}`}>
                           {fmt(r.summary.collection_achievement)}
                         </td>
-                        <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.other_transaction)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.dues_recovery)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.collection_gap)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.sales_return)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.other_transaction)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.net_sales)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.dues_recovery)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.closing_dues)}</td>
                         <td className="p-3">
                           <StatusBadge status={r.person.status} />
                         </td>
@@ -279,23 +279,23 @@ export default function AdminDashboard() {
                       </>
                     ) : (
                       <>
-                        <td className="p-3 text-right">{fmt(r.summary.opening_dues)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.sales_target)}</td>
-                        <td className={`p-3 text-right ${achvClass(r.summary.sales_achievement, r.summary.sales_target)}`}>
+                        <td className="p-3 text-right num">{fmt(r.summary.opening_dues)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.sales_target)}</td>
+                        <td className={`p-3 text-right num ${achvClass(r.summary.sales_achievement, r.summary.sales_target)}`}>
                           {fmt(r.summary.sales_achievement)}
                         </td>
-                        <td className="p-3 text-right">{fmt(r.summary.collection_target)}</td>
-                        <td className={`p-3 text-right ${achvClass(r.summary.collection_achievement, r.summary.collection_target)}`}>
+                        <td className="p-3 text-right num">{fmt(r.summary.collection_target)}</td>
+                        <td className={`p-3 text-right num ${achvClass(r.summary.collection_achievement, r.summary.collection_target)}`}>
                           {fmt(r.summary.collection_achievement)}
                         </td>
-                        <td className="p-3 text-right">{fmt(r.summary.collection_gap)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.sales_return)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.other_transaction)}</td>
-                        <td className="p-3 text-right">{fmt(r.summary.net_sales)}</td>
-                        <td className="p-3 text-right">
+                        <td className="p-3 text-right num">{fmt(r.summary.collection_gap)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.sales_return)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.other_transaction)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.net_sales)}</td>
+                        <td className="p-3 text-right num">
                           {fmt(r.summary.dues_recovery)}
                         </td>
-                        <td className="p-3 text-right">{fmt(r.summary.closing_dues)}</td>
+                        <td className="p-3 text-right num">{fmt(r.summary.closing_dues)}</td>
                         <td className="p-3">
                           <StatusBadge status={r.person.status} />
                         </td>
@@ -328,15 +328,15 @@ export default function AdminDashboard() {
                   <td className="p-3" colSpan={2}>
                     Grand Total
                   </td>
-                  <td className="p-3 text-right">-</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.sales_target)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.sales_achievement)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.collection_target)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.collection_achievement)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.collection_gap)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.sales_return)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.other_transaction)}</td>
-                  <td className="p-3 text-right">{fmt(grandTotal.net_sales)}</td>
+                  <td className="p-3 text-right num">-</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.sales_target)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.sales_achievement)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.collection_target)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.collection_achievement)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.collection_gap)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.sales_return)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.other_transaction)}</td>
+                  <td className="p-3 text-right num">{fmt(grandTotal.net_sales)}</td>
                   <td className="p-3"></td>
                   <td className="p-3"></td>
                   <td className="p-3"></td>
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
           {/* ---------- MOBILE / TABLET: stacked cards ---------- */}
           <div className="lg:hidden space-y-3">
             {rows.map((r) => (
-              <div key={r.person.id} className="bg-white rounded-xl shadow p-4 space-y-3">
+              <div key={r.person.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <Link
@@ -453,7 +453,7 @@ export default function AdminDashboard() {
             ))}
 
             {/* Grand total card */}
-            <div className="bg-gray-900 text-white rounded-xl shadow p-4">
+            <div className="bg-gray-900 text-white rounded-xl border border-slate-200 shadow-sm p-4">
               <p className="font-semibold mb-2">Grand Total</p>
               <div className="grid grid-cols-2 gap-y-2 text-sm">
                 <StatRow label="Sales Target" value={fmt(grandTotal.sales_target)} dark />
@@ -531,7 +531,7 @@ function StatRow({ label, value, bold, dark, warn, good }) {
         {good && " ✓"}
       </span>
       <span
-        className={`text-right ${bold ? "font-semibold" : ""} ${
+        className={`text-right num ${bold ? "font-semibold" : ""} ${
           warn ? "text-red-600 font-medium" : good ? "text-green-600 font-medium" : ""
         }`}
       >

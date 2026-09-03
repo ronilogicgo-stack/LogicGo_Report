@@ -118,7 +118,7 @@ export default function MyProfilePage() {
     <div className="max-w-lg mx-auto space-y-6">
       <h1 className="text-lg sm:text-xl font-bold">My Profile</h1>
 
-      <div className="bg-white rounded-xl shadow p-4 sm:p-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
         <h2 className="font-semibold text-sm mb-3">Profile Photo</h2>
         {profile?.email_change_pending ? (
           <p className="text-sm text-gray-400">
@@ -152,7 +152,7 @@ export default function MyProfilePage() {
 
       <form
         onSubmit={handleSaveProfile}
-        className="bg-white rounded-xl shadow p-4 sm:p-6 space-y-4"
+        className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4"
       >
         <h2 className="font-semibold text-sm">Profile Details</h2>
 
@@ -216,7 +216,7 @@ export default function MyProfilePage() {
 
       <form
         onSubmit={handleRequestEmailChange}
-        className="bg-white rounded-xl shadow p-4 sm:p-6 space-y-4"
+        className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4"
       >
         <h2 className="font-semibold text-sm">Email Address</h2>
         <p className="text-sm text-gray-500">

@@ -167,7 +167,7 @@ export default function AnalyticsPage() {
       </div>
 
       {preset === "Custom" && (
-        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl shadow p-4">
+        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
           <label className="text-sm text-gray-500">
             From
             <input
@@ -297,9 +297,9 @@ export default function AnalyticsPage() {
 
 function HeadlineCard({ label, value, sub, color }) {
   return (
-    <div className={`rounded-xl shadow p-4 text-white ${color}`}>
+    <div className={`rounded-xl border border-slate-200 shadow-sm p-4 text-white ${color}`}>
       <p className="text-xs text-white/80">{label}</p>
-      <p className="text-lg font-bold mt-1 truncate">{value}</p>
+      <p className="text-lg font-bold mt-1 truncate num">{value}</p>
       {sub && <p className="text-sm text-white/90 mt-0.5">{sub}</p>}
     </div>
   );
@@ -307,7 +307,7 @@ function HeadlineCard({ label, value, sub, color }) {
 
 function ChartCard({ title, children, full }) {
   return (
-    <div className={`bg-white rounded-xl shadow p-4 ${full ? "lg:col-span-2" : ""}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm p-4 ${full ? "lg:col-span-2" : ""}`}>
       <h3 className="text-sm font-semibold text-gray-700 mb-2">{title}</h3>
       {children}
     </div>

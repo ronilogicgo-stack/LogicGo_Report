@@ -7,6 +7,7 @@ import { downloadCSV } from "@/lib/csv";
 import ExportButtons from "@/components/ExportButtons";
 import DailyEntryForm from "@/components/DailyEntryForm";
 import DailyEntriesTable from "@/components/DailyEntriesTable";
+import SummaryCard from "@/components/SummaryCard";
 
 export default function SalesDashboard() {
   const supabase = createClient();
@@ -142,7 +143,7 @@ export default function SalesDashboard() {
       </div>
 
       {editingTargets && (
-        <div className="bg-white rounded-xl shadow p-4 space-y-3">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
           <h2 className="font-semibold text-sm">
             Set Opening Dues / Sales Target / Collection Target for this month
           </h2>
@@ -246,49 +247,6 @@ export default function SalesDashboard() {
           />
         </div>
       </div>
-    </div>
-  );
-}
-
-function SummaryCard({ label, value, highlight, belowTarget, aboveTarget }) {
-  return (
-    <div
-      className={`rounded-xl shadow p-3 sm:p-4 ${
-        belowTarget
-          ? "bg-red-50 ring-1 ring-red-300"
-          : aboveTarget
-          ? "bg-green-50 ring-1 ring-green-300"
-          : highlight
-          ? "bg-black text-white"
-          : "bg-white"
-      }`}
-    >
-      <p
-        className={`text-xs ${
-          belowTarget
-            ? "text-red-600"
-            : aboveTarget
-            ? "text-green-600"
-            : highlight
-            ? "text-gray-300"
-            : "text-gray-500"
-        }`}
-      >
-        {label}
-      </p>
-      <p
-        className={`text-base sm:text-lg font-bold mt-1 ${
-          belowTarget ? "text-red-700" : aboveTarget ? "text-green-700" : ""
-        }`}
-      >
-        {value}
-      </p>
-      {belowTarget && (
-        <p className="text-[11px] text-red-600 font-medium mt-0.5">Below target</p>
-      )}
-      {aboveTarget && (
-        <p className="text-[11px] text-green-600 font-medium mt-0.5">Above target</p>
-      )}
     </div>
   );
 }

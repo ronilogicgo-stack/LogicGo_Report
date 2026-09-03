@@ -75,6 +75,27 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v22 (visual design refresh)
+- **New typography**: Inter for interface text, and a monospaced
+  numeral font (JetBrains Mono) for every money/number figure across
+  the app - digits line up visually like a ledger, instead of a
+  generic system font.
+- **Icons on every metric card** (Opening Dues, Sales Target, Net
+  Sales, etc.) via lucide-react, so each number is recognizable at a
+  glance rather than just another undifferentiated box.
+- **Refined card style**: swapped heavy drop shadows for a subtle
+  border + light shadow across every card, table, and form on both the
+  Admin and Sales Person panels, for a cleaner, more "financial ledger"
+  feel instead of the generic stacked-card look.
+- Extracted the metric card into one shared `SummaryCard` component
+  (used by both the Sales Person's dashboard and the Admin's
+  per-employee page), so any future styling change only needs to
+  happen in one place.
+
+Note: Google Fonts are fetched at build time - this requires normal
+internet access during the Vercel build (which it always has); no
+setup is needed on your end.
+
 ## What's new in v21
 - **New field: Other Transaction.** A free-form daily adjustment
   (bonus, write-off, correction, etc. - positive or negative) added to
