@@ -17,7 +17,12 @@ function cellClass(entry, field) {
 function EditBadge({ count }) {
   if (!count) return null;
   return (
-    <sup className="ml-0.5 text-[10px] font-bold text-red-600">×{count}</sup>
+    <span
+      title={`Edited ${count} time${count === 1 ? "" : "s"}`}
+      className="ml-1.5 inline-flex items-center gap-0.5 align-middle text-[9px] font-bold text-red-700 bg-red-100 rounded-full px-1.5 py-0.5"
+    >
+      ✎ {count}
+    </span>
   );
 }
 
