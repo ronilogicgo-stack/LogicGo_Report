@@ -48,6 +48,20 @@ function PhoneActions({ phone }) {
   );
 }
 
+/** Shows at most `n` words, with the full text available as a native
+ * hover tooltip - used for Location and Note so the table doesn't get
+ * cluttered with long addresses/notes. */
+function TruncatedText({ text, words = 3, className = "" }) {
+  if (!text) return <span className={className}>-</span>;
+  const parts = String(text).trim().split(/\s+/);
+  const preview = parts.length > words ? parts.slice(0, words).join(" ") + "…" : text;
+  return (
+    <span className={className} title={text}>
+      {preview}
+    </span>
+  );
+}
+
 const emptyForm = {
   serial: "",
   entry_date: dateKey(),
@@ -61,12 +75,51 @@ const emptyForm = {
   payment_status: "Due",
   ledger_due: "",
   note: "",
-  followup_date_1: "",
-  followup_date_2: "",
-  followup_date_3: "",
-  followup_date_4: "",
-  followup_date_5: "",
+  followup_date: "",
 };
+
+/** The 5 stored follow-up slots are collapsed into ONE editable date in
+ * the form - simpler to use, while still preserving history. Finds
+ * whichever of the 5 slots currently holds the latest date (the one
+ * driving the red/yellow priority) so editing it updates that slot;
+ * if none are set yet, the new date goes into slot 1. */
+function latestFollowupSlot(record) {
+  const slots = [
+    record?.followup_date_1,
+    record?.followup_date_2,
+    record?.followup_date_3,
+    record?.followup_date_4,
+    record?.followup_date_5,
+  ];
+  let idx = -1;
+  let val = null;
+  slots.forEach((d, i) => {
+    if (d && (!val || d > val)) {
+      val = d;
+      idx = i;
+    }
+  });
+  return { index: idx === -1 ? 0 : idx, value: val };
+}
+
+function buildFollowupSlots(record, newDateValue) {
+  const slots = [
+    record?.followup_date_1 || null,
+    record?.followup_date_2 || null,
+    record?.followup_date_3 || null,
+    record?.followup_date_4 || null,
+    record?.followup_date_5 || null,
+  ];
+  const { index } = latestFollowupSlot(record);
+  slots[index] = newDateValue || null;
+  return {
+    followup_date_1: slots[0],
+    followup_date_2: slots[1],
+    followup_date_3: slots[2],
+    followup_date_4: slots[3],
+    followup_date_5: slots[4],
+  };
+}
 
 const ROW_TONE = {
   red: "bg-red-50",
@@ -102,6 +155,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -133,6 +187,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       records.reduce((max, r) => Math.max(max, Number(r.serial) || 0), 0) + 1;
     setForm({ ...emptyForm, serial: nextSerial });
     setEditingId(null);
+    setEditingRecord(null);
     setShowForm(true);
   }
 
@@ -150,13 +205,10 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       payment_status: r.payment_status ?? "Due",
       ledger_due: r.ledger_due ?? "",
       note: r.note ?? "",
-      followup_date_1: r.followup_date_1 ?? "",
-      followup_date_2: r.followup_date_2 ?? "",
-      followup_date_3: r.followup_date_3 ?? "",
-      followup_date_4: r.followup_date_4 ?? "",
-      followup_date_5: r.followup_date_5 ?? "",
+      followup_date: latestFollowupSlot(r).value ?? "",
     });
     setEditingId(r.id);
+    setEditingRecord(r);
     setShowForm(true);
   }
 
@@ -179,11 +231,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       payment_status: form.payment_status,
       ledger_due: Number(form.ledger_due) || 0,
       note: form.note,
-      followup_date_1: form.followup_date_1 || null,
-      followup_date_2: form.followup_date_2 || null,
-      followup_date_3: form.followup_date_3 || null,
-      followup_date_4: form.followup_date_4 || null,
-      followup_date_5: form.followup_date_5 || null,
+      ...buildFollowupSlots(editingId ? editingRecord : null, form.followup_date || null),
     };
 
     const { error: saveError } = editingId
@@ -196,6 +244,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       setShowForm(false);
       setForm(emptyForm);
       setEditingId(null);
+    setEditingRecord(null);
       load();
     }
     setSaving(false);
@@ -273,6 +322,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
               onClick={() => {
                 setShowForm(false);
                 setEditingId(null);
+    setEditingRecord(null);
               }}
               className="text-xs text-slate-500 underline"
             >
@@ -305,11 +355,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
             <LabeledInput label="Due Amount" type="number" value={form.due_amount} onChange={(v) => setForm({ ...form, due_amount: v })} />
             <LabeledInput label="Ledger Due" type="number" value={form.ledger_due} onChange={(v) => setForm({ ...form, ledger_due: v })} />
             <LabeledInput label="Note" value={form.note} onChange={(v) => setForm({ ...form, note: v })} />
-            <LabeledInput label="1st Followup" type="date" value={form.followup_date_1} onChange={(v) => setForm({ ...form, followup_date_1: v })} />
-            <LabeledInput label="2nd Followup" type="date" value={form.followup_date_2} onChange={(v) => setForm({ ...form, followup_date_2: v })} />
-            <LabeledInput label="3rd Followup" type="date" value={form.followup_date_3} onChange={(v) => setForm({ ...form, followup_date_3: v })} />
-            <LabeledInput label="4th Followup" type="date" value={form.followup_date_4} onChange={(v) => setForm({ ...form, followup_date_4: v })} />
-            <LabeledInput label="5th Followup" type="date" value={form.followup_date_5} onChange={(v) => setForm({ ...form, followup_date_5: v })} />
+            <LabeledInput label="Follow-up Date" type="date" value={form.followup_date} onChange={(v) => setForm({ ...form, followup_date: v })} />
           </div>
 
           <button
@@ -360,9 +406,21 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                       <td className="p-3 num">{r.serial ?? "-"}</td>
                       <td className="p-3">{r.entry_date || "-"}</td>
                       <td className="p-3">{r.executive_name || "-"}</td>
-                      <td className="p-3 font-medium">{r.company_name}</td>
+                      <td className="p-3">
+                        <p className="font-medium">{r.company_name}</p>
+                        {r.note && (
+                          <p
+                            className="text-xs text-slate-400 mt-0.5 max-w-[160px] truncate"
+                            title={r.note}
+                          >
+                            {r.note}
+                          </p>
+                        )}
+                      </td>
                       <td className="p-3"><PhoneActions phone={r.phone_number} /></td>
-                      <td className="p-3">{r.location || "-"}</td>
+                      <td className="p-3">
+                        <TruncatedText text={r.location} words={3} />
+                      </td>
                       <td className="p-3 text-right num">{fmt(r.received_amount)}</td>
                       <td className="p-3 text-right num">{fmt(r.due_amount)}</td>
                       <td className="p-3">{r.payment_status}</td>
@@ -405,8 +463,13 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                     <div>
                       <p className="font-semibold">{r.company_name}</p>
                       <p className="text-xs text-slate-500">
-                        {r.executive_name} · {r.location}
+                        {r.executive_name} · <TruncatedText text={r.location} words={3} />
                       </p>
+                      {r.note && (
+                        <p className="text-xs text-slate-400 mt-0.5 truncate" title={r.note}>
+                          {r.note}
+                        </p>
+                      )}
                       <p className="text-xs text-slate-600 mt-1">
                         <PhoneActions phone={r.phone_number} />
                       </p>

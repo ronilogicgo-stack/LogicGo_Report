@@ -75,6 +75,17 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v23.2
+- **Simplified the Follow-up Date to one field** in the Add/Edit form
+  (was 5 separate date pickers). Editing it updates whichever of the 5
+  stored slots currently holds the latest date - the one that drives
+  the red/yellow priority - so history from old records is preserved
+  without cluttering the form.
+- **Location and Note are now shown as short previews** (Location:
+  first 3 words; Note: a single truncated line under the company name)
+  with the full text available by hovering over it, instead of taking
+  up a lot of table width.
+
 ## What's new in v23.1
 - **Click-to-call and WhatsApp buttons** next to every phone number in
   the Payment Follow-Up module. Tapping the phone icon dials the
