@@ -75,6 +75,13 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v23.7
+- **Note now truncates to 3 words** (matching Location) with the full
+  text on hover, instead of 4.
+- **Fixed the Location column being too wide** - it's now capped to a
+  consistent width, same as Note, so the table doesn't have an
+  oversized gap around it.
+
 ## What's new in v23.6
 - **Hide/Show toggle** on the Executive-wise summary - collapse it
   when you don't need it, or bring it back with one click.

@@ -654,13 +654,13 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                       </td>
                       {canEdit ? (
                         <EditableCell
-                          className="p-3"
+                          className="p-3 max-w-[160px]"
                           value={r.location || ""}
                           format={(v) => <TruncatedText text={v} words={3} />}
                           onSave={(v) => saveField(r, "location", v)}
                         />
                       ) : (
-                        <td className="p-3">
+                        <td className="p-3 max-w-[160px]">
                           <TruncatedText text={r.location} words={3} />
                         </td>
                       )}
@@ -710,14 +710,14 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                       )}
                       {canEdit ? (
                         <EditableCell
-                          className="p-3 max-w-[180px]"
+                          className="p-3 max-w-[160px]"
                           value={r.note || ""}
-                          format={(v) => <TruncatedText text={v} words={4} />}
+                          format={(v) => <TruncatedText text={v} words={3} />}
                           onSave={(v) => saveField(r, "note", v)}
                         />
                       ) : (
-                        <td className="p-3 max-w-[180px]">
-                          <TruncatedText text={r.note} words={4} />
+                        <td className="p-3 max-w-[160px]">
+                          <TruncatedText text={r.note} words={3} />
                         </td>
                       )}
                       {canEdit ? (
