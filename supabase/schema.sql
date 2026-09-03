@@ -375,8 +375,8 @@ select
   sum(collections) as total_collections,
   sum(sales_return) as total_sales_return,
   sum(net_sales) as total_net_sales,
-  sum(other_transaction) as total_other_transaction,
-  count(*) as days_reported
+  count(*) as days_reported,
+  sum(other_transaction) as total_other_transaction
 from public.daily_entries
 group by user_id, date_trunc('month', entry_date);
 
