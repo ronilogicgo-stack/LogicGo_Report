@@ -115,7 +115,7 @@ export default function MyProfilePage() {
   }
 
   return (
-    <div className="max-w-lg space-y-6">
+    <div className="max-w-lg mx-auto space-y-6">
       <h1 className="text-lg sm:text-xl font-bold">My Profile</h1>
 
       <div className="bg-white rounded-xl shadow p-4 sm:p-6">

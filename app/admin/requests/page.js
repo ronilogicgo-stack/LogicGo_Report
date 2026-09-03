@@ -250,7 +250,7 @@ export default function TeamManagementPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 max-w-5xl mx-auto">
       {/* ---------- PENDING REQUESTS ---------- */}
       <div className="space-y-3">
         <h1 className="text-lg sm:text-xl font-bold">Access Requests</h1>

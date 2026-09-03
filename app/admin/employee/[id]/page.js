@@ -87,7 +87,7 @@ export default function EmployeeDetailPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div>
         <button
           onClick={() => router.push("/admin")}

@@ -147,7 +147,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h1 className="text-lg sm:text-xl font-bold">Sales Analytics</h1>
         <div className="flex flex-wrap gap-2">
