@@ -221,6 +221,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showExecSummary, setShowExecSummary] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -436,42 +437,50 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
 
       {executiveSummary.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-          <div className="px-4 pt-3">
+          <div className="px-4 pt-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-700">
               Due Clients &amp; Ledger Due by Executive
             </h2>
+            <button
+              onClick={() => setShowExecSummary((v) => !v)}
+              className="text-xs text-blue-600 underline pb-3"
+            >
+              {showExecSummary ? "Hide" : "Show"}
+            </button>
           </div>
-          <table className="min-w-full text-sm mt-2">
-            <thead className="bg-slate-50 text-left text-slate-500">
-              <tr>
-                <th className="p-3">Executive</th>
-                <th className="p-3 text-right num">Due Clients</th>
-                <th className="p-3 text-right num">Total Ledger Due</th>
-              </tr>
-            </thead>
-            <tbody>
-              {executiveSummary.map((e) => (
-                <tr key={e.name} className="border-t">
-                  <td className="p-3 font-medium">{e.name}</td>
-                  <td className="p-3 text-right num">{e.dueClients}</td>
-                  <td className="p-3 text-right num font-medium text-red-600">
-                    {fmt(e.totalLedgerDue)}
+          {showExecSummary && (
+            <table className="min-w-full text-sm mt-2">
+              <thead className="bg-slate-50 text-left text-slate-500">
+                <tr>
+                  <th className="p-3">Executive</th>
+                  <th className="p-3 text-right num">Due Clients</th>
+                  <th className="p-3 text-right num">Total Ledger Due</th>
+                </tr>
+              </thead>
+              <tbody>
+                {executiveSummary.map((e) => (
+                  <tr key={e.name} className="border-t">
+                    <td className="p-3 font-medium">{e.name}</td>
+                    <td className="p-3 text-right num">{e.dueClients}</td>
+                    <td className="p-3 text-right num font-medium text-red-600">
+                      {fmt(e.totalLedgerDue)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-slate-50 font-semibold border-t">
+                <tr>
+                  <td className="p-3">Total</td>
+                  <td className="p-3 text-right num">
+                    {executiveSummary.reduce((s, e) => s + e.dueClients, 0)}
+                  </td>
+                  <td className="p-3 text-right num">
+                    {fmt(executiveSummary.reduce((s, e) => s + e.totalLedgerDue, 0))}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-slate-50 font-semibold border-t">
-              <tr>
-                <td className="p-3">Total</td>
-                <td className="p-3 text-right num">
-                  {executiveSummary.reduce((s, e) => s + e.dueClients, 0)}
-                </td>
-                <td className="p-3 text-right num">
-                  {fmt(executiveSummary.reduce((s, e) => s + e.totalLedgerDue, 0))}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+              </tfoot>
+            </table>
+          )}
         </div>
       )}
 

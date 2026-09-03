@@ -75,6 +75,10 @@ All calculation logic (Net Sales, Collection Gap, Closing Dues, monthly totals) 
 import from this same file, so every sales person — new or old — is always calculated the
 same way. If you ever need to change a formula, change it once here.
 
+## What's new in v23.6
+- **Hide/Show toggle** on the Executive-wise summary - collapse it
+  when you don't need it, or bring it back with one click.
+
 ## What's new in v23.5
 - **Executive-wise summary** at the top of each branch's Payment
   Follow-Up page: how many clients each Executive has with a Due
