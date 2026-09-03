@@ -154,7 +154,6 @@ export default function EmployeeDetailPage() {
           />
           <SummaryCard label="Collection Gap" value={fmt(summary.collection_gap)} />
           <SummaryCard label="Sales Return" value={fmt(summary.sales_return)} />
-        <SummaryCard label="Other Transaction" value={fmt(summary.other_transaction)} />
           <SummaryCard label="Net Sales" value={fmt(summary.net_sales)} highlight />
           <SummaryCard
             label="Dues Recovery"
