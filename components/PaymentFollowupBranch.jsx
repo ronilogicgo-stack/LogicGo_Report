@@ -222,6 +222,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showExecSummary, setShowExecSummary] = useState(true);
+  const [selectedExecutive, setSelectedExecutive] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -243,6 +244,26 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   }, [load]);
 
   const sorted = useMemo(() => sortFollowups(records), [records]);
+
+  // Every distinct executive name across ALL of this branch's records
+  // (not just the currently-Due ones), for the filter dropdown -
+  // alphabetical so it's easy to scan in a long list.
+  const executiveNames = useMemo(() => {
+    const names = new Set();
+    for (const r of records) {
+      const name = r.executive_name?.trim();
+      if (name) names.add(name);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [records]);
+
+  // The main table/cards/CSV respect the dropdown filter; the badge
+  // counts and the Executive Summary above stay based on every record
+  // in the branch, so the overview never silently hides anyone.
+  const filteredSorted = useMemo(() => {
+    if (!selectedExecutive) return sorted;
+    return sorted.filter((r) => (r.executive_name?.trim() || "") === selectedExecutive);
+  }, [sorted, selectedExecutive]);
 
   const counts = useMemo(() => {
     const c = { red: 0, yellow: 0, normal: 0 };
@@ -391,12 +412,13 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       "Received", "Due", "Status", "Ledger Due", "Note",
       "1st Followup", "2nd Followup", "3rd Followup", "4th Followup", "5th Followup",
     ];
-    const rows = sorted.map((r) => [
+    const rows = filteredSorted.map((r) => [
       r.serial, r.entry_date, r.executive_name, r.area_name, r.company_name, r.phone_number,
       r.location, r.received_amount, r.due_amount, r.payment_status, r.ledger_due, r.note,
       r.followup_date_1, r.followup_date_2, r.followup_date_3, r.followup_date_4, r.followup_date_5,
     ]);
-    downloadCSV(`payment_followup_${branchName.replace(/\s+/g, "_")}.csv`, headers, rows);
+    const filenameSuffix = selectedExecutive ? `_${selectedExecutive.replace(/\s+/g, "_")}` : "";
+    downloadCSV(`payment_followup_${branchName.replace(/\s+/g, "_")}${filenameSuffix}.csv`, headers, rows);
   }
 
   return (
@@ -423,16 +445,34 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 text-sm">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-100 text-red-700 font-medium">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-100 text-red-700 font-medium text-sm">
           {counts.red} Overdue
         </span>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 font-medium text-sm">
           {counts.yellow} Due Tomorrow
         </span>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 font-medium text-sm">
           {counts.normal} On Track
         </span>
+
+        {executiveNames.length > 0 && (
+          <label className="ml-auto flex items-center gap-2 text-sm text-slate-600">
+            Executive
+            <select
+              value={selectedExecutive}
+              onChange={(e) => setSelectedExecutive(e.target.value)}
+              className="border rounded-lg px-2 py-1.5 text-sm bg-white"
+            >
+              <option value="">All Executives</option>
+              {executiveNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {executiveSummary.length > 0 && (
@@ -545,8 +585,12 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
 
       {loading ? (
         <p className="text-slate-500">Loading...</p>
-      ) : sorted.length === 0 ? (
-        <p className="text-slate-500">No records yet.</p>
+      ) : filteredSorted.length === 0 ? (
+        <p className="text-slate-500">
+          {selectedExecutive
+            ? `No records for ${selectedExecutive}.`
+            : "No records yet."}
+        </p>
       ) : (
         <div className="print-area">
           {/* ---------- DESKTOP: table ---------- */}
@@ -571,7 +615,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((r) => {
+                {filteredSorted.map((r) => {
                   const priority = followupPriority(r);
                   const dates = [
                     r.followup_date_1, r.followup_date_2, r.followup_date_3,
@@ -754,7 +798,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
 
           {/* ---------- MOBILE: stacked cards ---------- */}
           <div className="lg:hidden space-y-3">
-            {sorted.map((r) => {
+            {filteredSorted.map((r) => {
               const priority = followupPriority(r);
               const dates = [
                 r.followup_date_1, r.followup_date_2, r.followup_date_3,
