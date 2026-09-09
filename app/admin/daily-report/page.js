@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   BarChart,
@@ -175,6 +175,39 @@ export default function DailyReportPage() {
     { sales: 0, collections: 0, gap: 0, salesReturn: 0, otherTransaction: 0, netSales: 0 }
   );
 
+  // Group rows by branch/location (e.g. "Head Office", "Sylhet", "Rangpur")
+  // and compute a subtotal per branch, matching the original Excel layout:
+  // rows for a branch, then a shaded "<Branch> SubTotal" row, repeated per
+  // branch, then one Grand Total row at the very end.
+  const branchGroups = useMemo(() => {
+    const order = [];
+    const byLocation = {};
+    for (const r of rows) {
+      const key = r.person.location || "Unassigned";
+      if (!byLocation[key]) {
+        byLocation[key] = [];
+        order.push(key);
+      }
+      byLocation[key].push(r);
+    }
+    return order.map((location) => {
+      const branchRows = byLocation[location];
+      const subtotal = branchRows.reduce(
+        (acc, r) => {
+          acc.sales += r.sales;
+          acc.collections += r.collections;
+          acc.gap += r.gap;
+          acc.salesReturn += r.salesReturn;
+          acc.otherTransaction += r.otherTransaction;
+          acc.netSales += r.netSales;
+          return acc;
+        },
+        { sales: 0, collections: 0, gap: 0, salesReturn: 0, otherTransaction: 0, netSales: 0 }
+      );
+      return { location, rows: branchRows, subtotal };
+    });
+  }, [rows]);
+
   const forecastTotals = useMemo(() => {
     return forecast.perPerson.reduce(
       (acc, p) => {
@@ -199,17 +232,46 @@ export default function DailyReportPage() {
       "Other Transaction",
       "Net Sales",
     ];
-    const csvRows = rows.map((r) => [
-      r.sl,
-      r.person.full_name,
-      r.person.location,
-      ...(mode === "range" ? [r.daysReported] : []),
-      r.sales,
-      r.collections,
-      r.gap,
-      r.salesReturn,
-      r.otherTransaction,
-      r.netSales,
+    const csvRows = [];
+    for (const group of branchGroups) {
+      for (const r of group.rows) {
+        csvRows.push([
+          r.sl,
+          r.person.full_name,
+          r.person.location,
+          ...(mode === "range" ? [r.daysReported] : []),
+          r.sales,
+          r.collections,
+          r.gap,
+          r.salesReturn,
+          r.otherTransaction,
+          r.netSales,
+        ]);
+      }
+      csvRows.push([
+        "",
+        `${group.location} SubTotal`,
+        "",
+        ...(mode === "range" ? [""] : []),
+        group.subtotal.sales,
+        group.subtotal.collections,
+        group.subtotal.gap,
+        group.subtotal.salesReturn,
+        group.subtotal.otherTransaction,
+        group.subtotal.netSales,
+      ]);
+    }
+    csvRows.push([
+      "",
+      "Grand Total",
+      "",
+      ...(mode === "range" ? [""] : []),
+      grandTotal.sales,
+      grandTotal.collections,
+      grandTotal.gap,
+      grandTotal.salesReturn,
+      grandTotal.otherTransaction,
+      grandTotal.netSales,
     ]);
     const filename =
       mode === "single"
@@ -313,31 +375,46 @@ export default function DailyReportPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr key={r.person.id} className={`border-t ${!r.reported ? "text-gray-400" : ""}`}>
-                    <td className="p-3">{r.sl}</td>
-                    <td className="p-3 font-medium">
-                      <Link
-                        href={`/admin/employee/${r.person.id}`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {r.person.full_name}
-                      </Link>
-                    </td>
-                    <td className="p-3">{r.person.location}</td>
-                    {mode === "range" && (
-                      <td className="p-3 text-right num">{r.daysReported}</td>
-                    )}
-                    <td className="p-3 text-right num">{fmt(r.sales)}</td>
-                    <td className="p-3 text-right num">{fmt(r.collections)}</td>
-                    <td className="p-3 text-right num">{fmt(r.gap)}</td>
-                    <td className="p-3 text-right num">{fmt(r.salesReturn)}</td>
-                    <td className="p-3 text-right num">{fmt(r.otherTransaction)}</td>
-                    <td className="p-3 text-right num font-medium">{fmt(r.netSales)}</td>
-                  </tr>
+                {branchGroups.map((group) => (
+                  <React.Fragment key={group.location}>
+                    {group.rows.map((r) => (
+                      <tr key={r.person.id} className={`border-t ${!r.reported ? "text-gray-400" : ""}`}>
+                        <td className="p-3">{r.sl}</td>
+                        <td className="p-3 font-medium">
+                          <Link
+                            href={`/admin/employee/${r.person.id}`}
+                            className="text-blue-600 hover:underline"
+                          >
+                            {r.person.full_name}
+                          </Link>
+                        </td>
+                        <td className="p-3">{r.person.location}</td>
+                        {mode === "range" && (
+                          <td className="p-3 text-right num">{r.daysReported}</td>
+                        )}
+                        <td className="p-3 text-right num">{fmt(r.sales)}</td>
+                        <td className="p-3 text-right num">{fmt(r.collections)}</td>
+                        <td className="p-3 text-right num">{fmt(r.gap)}</td>
+                        <td className="p-3 text-right num">{fmt(r.salesReturn)}</td>
+                        <td className="p-3 text-right num">{fmt(r.otherTransaction)}</td>
+                        <td className="p-3 text-right num font-medium">{fmt(r.netSales)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t font-semibold bg-orange-100">
+                      <td className="p-3" colSpan={mode === "range" ? 4 : 3}>
+                        {group.location} SubTotal
+                      </td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.sales)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.collections)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.gap)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.salesReturn)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.otherTransaction)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.netSales)}</td>
+                    </tr>
+                  </React.Fragment>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-50 font-semibold border-t">
+              <tfoot className="bg-orange-200 font-bold border-t-2 border-orange-300">
                 <tr>
                   <td className="p-3" colSpan={mode === "range" ? 4 : 3}>
                     Grand Total
@@ -353,51 +430,74 @@ export default function DailyReportPage() {
             </table>
           </div>
 
-          {/* ---------- MOBILE: stacked cards ---------- */}
+          {/* ---------- MOBILE: stacked cards, grouped by branch ---------- */}
           <div className="md:hidden space-y-3">
-            {rows.map((r) => (
-              <div
-                key={r.person.id}
-                className={`bg-white rounded-xl border border-slate-200 shadow-sm p-4 ${!r.reported ? "opacity-60" : ""}`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <Link
-                    href={`/admin/employee/${r.person.id}`}
-                    className="font-semibold text-blue-600 hover:underline"
+            {branchGroups.map((group) => (
+              <div key={group.location} className="space-y-3">
+                {group.rows.map((r) => (
+                  <div
+                    key={r.person.id}
+                    className={`bg-white rounded-xl border border-slate-200 shadow-sm p-4 ${!r.reported ? "opacity-60" : ""}`}
                   >
-                    {r.sl}. {r.person.full_name}
-                  </Link>
-                  <span className="text-xs text-gray-500">{r.person.location}</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <Link
+                        href={`/admin/employee/${r.person.id}`}
+                        className="font-semibold text-blue-600 hover:underline"
+                      >
+                        {r.sl}. {r.person.full_name}
+                      </Link>
+                      <span className="text-xs text-gray-500">{r.person.location}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-y-1 text-sm text-gray-600">
+                      {mode === "range" && (
+                        <>
+                          <span>Days Reported</span>
+                          <span className="text-right num">{r.daysReported}</span>
+                        </>
+                      )}
+                      <span>Sales</span>
+                      <span className="text-right num">{fmt(r.sales)}</span>
+                      <span>Collections</span>
+                      <span className="text-right num">{fmt(r.collections)}</span>
+                      <span>Gap</span>
+                      <span className="text-right num">{fmt(r.gap)}</span>
+                      <span>Sales Return</span>
+                      <span className="text-right num">{fmt(r.salesReturn)}</span>
+                      <span>Other Transaction</span>
+                      <span className="text-right num">{fmt(r.otherTransaction)}</span>
+                      <span className="font-medium text-gray-800">Net Sales</span>
+                      <span className="text-right num font-medium text-gray-800">
+                        {fmt(r.netSales)}
+                      </span>
+                    </div>
+                    {!r.reported && (
+                      <p className="text-xs text-gray-400 mt-2 border-t pt-2">
+                        {mode === "single"
+                          ? "No entry submitted for this date."
+                          : "No entries submitted in this range."}
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                {/* Branch subtotal card */}
+                <div className="bg-orange-100 rounded-xl border border-orange-200 shadow-sm p-4">
+                  <p className="font-semibold mb-2 text-gray-800">{group.location} SubTotal</p>
+                  <div className="grid grid-cols-2 gap-y-1 text-sm text-gray-700">
+                    <span>Sales</span>
+                    <span className="text-right num">{fmt(group.subtotal.sales)}</span>
+                    <span>Collections</span>
+                    <span className="text-right num">{fmt(group.subtotal.collections)}</span>
+                    <span>Gap</span>
+                    <span className="text-right num">{fmt(group.subtotal.gap)}</span>
+                    <span>Sales Return</span>
+                    <span className="text-right num">{fmt(group.subtotal.salesReturn)}</span>
+                    <span>Other Tran.</span>
+                    <span className="text-right num">{fmt(group.subtotal.otherTransaction)}</span>
+                    <span className="font-medium">Net Sales</span>
+                    <span className="text-right num font-medium">{fmt(group.subtotal.netSales)}</span>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-y-1 text-sm text-gray-600">
-                  {mode === "range" && (
-                    <>
-                      <span>Days Reported</span>
-                      <span className="text-right num">{r.daysReported}</span>
-                    </>
-                  )}
-                  <span>Sales</span>
-                  <span className="text-right num">{fmt(r.sales)}</span>
-                  <span>Collections</span>
-                  <span className="text-right num">{fmt(r.collections)}</span>
-                  <span>Gap</span>
-                  <span className="text-right num">{fmt(r.gap)}</span>
-                  <span>Sales Return</span>
-                  <span className="text-right num">{fmt(r.salesReturn)}</span>
-                  <span>Other Transaction</span>
-                  <span className="text-right num">{fmt(r.otherTransaction)}</span>
-                  <span className="font-medium text-gray-800">Net Sales</span>
-                  <span className="text-right num font-medium text-gray-800">
-                    {fmt(r.netSales)}
-                  </span>
-                </div>
-                {!r.reported && (
-                  <p className="text-xs text-gray-400 mt-2 border-t pt-2">
-                    {mode === "single"
-                      ? "No entry submitted for this date."
-                      : "No entries submitted in this range."}
-                  </p>
-                )}
               </div>
             ))}
 
