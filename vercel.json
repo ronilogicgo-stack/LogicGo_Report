@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/check-missed-entries",
+      "schedule": "1 18 * * *"
+    }
+  ]
+}
