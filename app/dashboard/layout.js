@@ -14,6 +14,7 @@ export default function DashboardLayout({ children }) {
   const [alsoAdmin, setAlsoAdmin] = useState(false);
   const [hasFollowupAccess, setHasFollowupAccess] = useState(false);
   const [hasBillingAccess, setHasBillingAccess] = useState(false);
+  const [hasPosAccess, setHasPosAccess] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
 
   useEffect(() => {
@@ -68,6 +69,13 @@ export default function DashboardLayout({ children }) {
         .eq("user_id", session.user.id)
         .maybeSingle();
       setHasBillingAccess(!!billingGrant);
+
+      const { data: posGrant } = await supabase
+        .from("pos_access")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      setHasPosAccess(!!posGrant);
 
       setChecked(true);
     }
@@ -128,6 +136,11 @@ export default function DashboardLayout({ children }) {
           {hasBillingAccess && (
             <Link href="/billing" className="text-sm text-indigo-100 hover:text-white">
               Billing
+            </Link>
+          )}
+          {hasPosAccess && (
+            <Link href="/pos" className="text-sm text-indigo-100 hover:text-white">
+              POS
             </Link>
           )}
           {alsoAdmin && (

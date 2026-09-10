@@ -124,6 +124,12 @@ export default function AdminLayout({ children }) {
             Billing
           </Link>
           <Link
+            href="/pos"
+            className="text-sm text-indigo-100 hover:text-white"
+          >
+            POS
+          </Link>
+          <Link
             href="/admin/requests"
             className="text-sm text-indigo-100 hover:text-white"
           >
