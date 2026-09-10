@@ -4,6 +4,33 @@ import { fmt } from "@/lib/calculations";
 
 const DEFAULT_FIELD_EDITS = { sales: 0, collections: 0, sales_return: 0, remarks: 0 };
 
+const TAG_STYLES = {
+  holiday: "bg-amber-100 text-amber-700",
+  leave: "bg-sky-100 text-sky-700",
+  custom: "bg-violet-100 text-violet-700",
+  requested: "bg-red-100 text-red-700",
+};
+
+const TAG_LABELS = {
+  holiday: "Holiday",
+  leave: "Leave",
+  custom: "Note",
+  requested: "Needs Entry",
+};
+
+function EntryTypeTag({ entryType }) {
+  if (!entryType || entryType === "submitted") return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+        TAG_STYLES[entryType] || "bg-slate-100 text-slate-600"
+      }`}
+    >
+      {TAG_LABELS[entryType] || entryType}
+    </span>
+  );
+}
+
 function editCount(entry, field) {
   return entry?.field_edits?.[field] ?? 0;
 }
@@ -61,8 +88,13 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
           </thead>
           <tbody>
             {entries.map((e) => (
-              <tr key={e.id} className="border-t">
-                <td className="p-3">{e.entry_date}</td>
+              <tr key={e.id} className={`border-t ${e.entry_type === "requested" ? "bg-red-50/40" : ""}`}>
+                <td className="p-3">
+                  <span className="inline-flex items-center gap-2">
+                    {e.entry_date}
+                    <EntryTypeTag entryType={e.entry_type} />
+                  </span>
+                </td>
                 <td className={`p-3 text-right num ${cellClass(e, "sales")}`}>
                   {fmt(e.sales)}
                   <EditBadge count={editCount(e, "sales")} />
@@ -104,9 +136,12 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
       {/* ---------- MOBILE: stacked cards ---------- */}
       <div className="md:hidden space-y-3">
         {entries.map((e) => (
-          <div key={e.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div key={e.id} className={`bg-white rounded-xl border border-slate-200 shadow-sm p-4 ${e.entry_type === "requested" ? "border-red-200 bg-red-50/40" : ""}`}>
             <div className="flex items-center justify-between mb-2">
-              <p className="font-semibold">{e.entry_date}</p>
+              <p className="font-semibold inline-flex items-center gap-2">
+                {e.entry_date}
+                <EntryTypeTag entryType={e.entry_type} />
+              </p>
               <p className="text-sm font-semibold">{fmt(e.net_sales)} Net</p>
             </div>
             <div className="grid grid-cols-2 gap-y-1 text-sm text-gray-600">
