@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Fragment, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { summarizeFromTotals, fmt, monthKey } from "@/lib/calculations";
@@ -124,6 +124,56 @@ export default function AdminDashboard() {
     }
   );
 
+  // Group rows by branch/location (e.g. "Head Office", "Sylhet", "Rangpur")
+  // and compute a subtotal per branch, matching the Daily Report page's
+  // layout: rows for a branch, then a shaded "<Branch> SubTotal" row,
+  // repeated per branch, then one Grand Total row at the very end.
+  const branchGroups = useMemo(() => {
+    const order = [];
+    const byLocation = {};
+    for (const r of rows) {
+      const key = r.person.location || "Unassigned";
+      if (!byLocation[key]) {
+        byLocation[key] = [];
+        order.push(key);
+      }
+      byLocation[key].push(r);
+    }
+    return order.map((location) => {
+      const branchRows = byLocation[location];
+      const subtotal = branchRows.reduce(
+        (acc, r) => {
+          acc.opening_dues += r.summary.opening_dues;
+          acc.sales_target += r.summary.sales_target;
+          acc.sales_achievement += r.summary.sales_achievement;
+          acc.collection_target += r.summary.collection_target;
+          acc.collection_achievement += r.summary.collection_achievement;
+          acc.collection_gap += r.summary.collection_gap;
+          acc.sales_return += r.summary.sales_return;
+          acc.other_transaction += r.summary.other_transaction;
+          acc.net_sales += r.summary.net_sales;
+          acc.dues_recovery += r.summary.dues_recovery;
+          acc.closing_dues += r.summary.closing_dues;
+          return acc;
+        },
+        {
+          opening_dues: 0,
+          sales_target: 0,
+          sales_achievement: 0,
+          collection_target: 0,
+          collection_achievement: 0,
+          collection_gap: 0,
+          sales_return: 0,
+          other_transaction: 0,
+          net_sales: 0,
+          dues_recovery: 0,
+          closing_dues: 0,
+        }
+      );
+      return { location, rows: branchRows, subtotal };
+    });
+  }, [rows]);
+
   function exportCSV() {
     const headers = [
       "Sales Person",
@@ -206,7 +256,9 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {branchGroups.map((group) => (
+                  <Fragment key={group.location}>
+                    {group.rows.map((r) => (
                   <tr key={r.person.id} className="border-t">
                     <td className="p-3 font-medium">
                       <Link
@@ -321,9 +373,29 @@ export default function AdminDashboard() {
                       </>
                     )}
                   </tr>
+                    ))}
+                    <tr className="border-t font-semibold bg-orange-100">
+                      <td className="p-3" colSpan={2}>
+                        {group.location} SubTotal
+                      </td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.opening_dues)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.sales_target)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.sales_achievement)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.collection_target)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.collection_achievement)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.collection_gap)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.sales_return)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.other_transaction)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.net_sales)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.dues_recovery)}</td>
+                      <td className="p-3 text-right num">{fmt(group.subtotal.closing_dues)}</td>
+                      <td className="p-3"></td>
+                      <td className="p-3"></td>
+                    </tr>
+                  </Fragment>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-50 font-semibold border-t">
+              <tfoot className="bg-orange-200 font-bold border-t-2 border-orange-300">
                 <tr>
                   <td className="p-3" colSpan={2}>
                     Grand Total
@@ -348,7 +420,9 @@ export default function AdminDashboard() {
 
           {/* ---------- MOBILE / TABLET: stacked cards ---------- */}
           <div className="lg:hidden space-y-3">
-            {rows.map((r) => (
+            {branchGroups.map((group) => (
+              <div key={group.location} className="space-y-3">
+                {group.rows.map((r) => (
               <div key={r.person.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -449,6 +523,37 @@ export default function AdminDashboard() {
                     </div>
                   </>
                 )}
+              </div>
+                ))}
+
+                {/* Branch subtotal card */}
+                <div className="bg-orange-100 rounded-xl border border-orange-200 shadow-sm p-4">
+                  <p className="font-semibold mb-2 text-gray-800">{group.location} SubTotal</p>
+                  <div className="grid grid-cols-2 gap-y-1 text-sm text-gray-700">
+                    <span>Opening Dues</span>
+                    <span className="text-right num">{fmt(group.subtotal.opening_dues)}</span>
+                    <span>Sales Target</span>
+                    <span className="text-right num">{fmt(group.subtotal.sales_target)}</span>
+                    <span>Sales Achv.</span>
+                    <span className="text-right num">{fmt(group.subtotal.sales_achievement)}</span>
+                    <span>Collection Target</span>
+                    <span className="text-right num">{fmt(group.subtotal.collection_target)}</span>
+                    <span>Collection Achv.</span>
+                    <span className="text-right num">{fmt(group.subtotal.collection_achievement)}</span>
+                    <span>Gap</span>
+                    <span className="text-right num">{fmt(group.subtotal.collection_gap)}</span>
+                    <span>Sales Return</span>
+                    <span className="text-right num">{fmt(group.subtotal.sales_return)}</span>
+                    <span>Other Tran.</span>
+                    <span className="text-right num">{fmt(group.subtotal.other_transaction)}</span>
+                    <span className="font-medium">Net Sales</span>
+                    <span className="text-right num font-medium">{fmt(group.subtotal.net_sales)}</span>
+                    <span>Dues Recovery</span>
+                    <span className="text-right num">{fmt(group.subtotal.dues_recovery)}</span>
+                    <span className="font-medium">Closing Dues</span>
+                    <span className="text-right num font-medium">{fmt(group.subtotal.closing_dues)}</span>
+                  </div>
+                </div>
               </div>
             ))}
 
