@@ -13,6 +13,7 @@ export default function DashboardLayout({ children }) {
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [alsoAdmin, setAlsoAdmin] = useState(false);
   const [hasFollowupAccess, setHasFollowupAccess] = useState(false);
+  const [hasBillingAccess, setHasBillingAccess] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
 
   useEffect(() => {
@@ -60,6 +61,13 @@ export default function DashboardLayout({ children }) {
         .eq("user_id", session.user.id)
         .limit(1);
       setHasFollowupAccess(!!grants && grants.length > 0);
+
+      const { data: billingGrant } = await supabase
+        .from("billing_access")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      setHasBillingAccess(!!billingGrant);
 
       setChecked(true);
     }
@@ -115,6 +123,11 @@ export default function DashboardLayout({ children }) {
               className="text-sm text-indigo-100 hover:text-white"
             >
               Payment Follow-Up
+            </Link>
+          )}
+          {hasBillingAccess && (
+            <Link href="/billing" className="text-sm text-indigo-100 hover:text-white">
+              Billing
             </Link>
           )}
           {alsoAdmin && (

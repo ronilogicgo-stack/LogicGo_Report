@@ -33,4 +33,10 @@ body {
     top: 0;
     width: 100%;
   }
+  /* Buttons/controls that shouldn't appear on the printed page even
+     though they live inside a .print-area (e.g. an invoice's status
+     buttons and "Print" link sitting above the printable content). */
+  .no-print {
+    display: none !important;
+  }
 }

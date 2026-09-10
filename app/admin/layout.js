@@ -118,6 +118,12 @@ export default function AdminLayout({ children }) {
             Payment Follow-Up
           </Link>
           <Link
+            href="/billing"
+            className="text-sm text-indigo-100 hover:text-white"
+          >
+            Billing
+          </Link>
+          <Link
             href="/admin/requests"
             className="text-sm text-indigo-100 hover:text-white"
           >
