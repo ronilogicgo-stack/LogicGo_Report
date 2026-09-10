@@ -199,6 +199,26 @@ export default function EmployeeDetailPage() {
               setEditingEntry(entry);
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
+            onDelete={async (entry) => {
+              const label =
+                entry.entry_type && entry.entry_type !== "submitted"
+                  ? `the ${entry.entry_type} note for`
+                  : "the entry for";
+              const ok = window.confirm(
+                `Delete ${label} ${entry.entry_date}? This also removes it from ${person?.full_name || "this employee"}'s own dashboard and it will no longer count in any total. This cannot be undone.`
+              );
+              if (!ok) return;
+              const { error } = await supabase
+                .from("daily_entries")
+                .delete()
+                .eq("id", entry.id);
+              if (error) {
+                alert(`Could not delete: ${error.message}`);
+                return;
+              }
+              if (editingEntry?.id === entry.id) setEditingEntry(null);
+              load();
+            }}
           />
         </div>
       </div>
