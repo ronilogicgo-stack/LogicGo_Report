@@ -95,10 +95,15 @@ export default function AdminLayout({ children }) {
             Daily Report
           </Link>
           <Link
-            href="/admin/requests"
-            className="text-sm text-indigo-100 hover:text-white"
+            href="/admin/notifications"
+            className="text-sm text-indigo-100 hover:text-white inline-flex items-center gap-1.5"
           >
-            Team &amp; Requests
+            Notifications
+            {missedCount > 0 && (
+              <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                {missedCount}
+              </span>
+            )}
           </Link>
           <Link
             href="/admin/analytics"
@@ -113,15 +118,10 @@ export default function AdminLayout({ children }) {
             Payment Follow-Up
           </Link>
           <Link
-            href="/admin/notifications"
-            className="text-sm text-indigo-100 hover:text-white inline-flex items-center gap-1.5"
+            href="/admin/requests"
+            className="text-sm text-indigo-100 hover:text-white"
           >
-            Notifications
-            {missedCount > 0 && (
-              <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
-                {missedCount}
-              </span>
-            )}
+            Team &amp; Requests
           </Link>
           <Link
             href="/admin/settings"
