@@ -11,6 +11,7 @@ export default function AdminLayout({ children }) {
   const [checked, setChecked] = useState(false);
   const [alsoSalesPerson, setAlsoSalesPerson] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [missedCount, setMissedCount] = useState(0);
 
   useEffect(() => {
     async function check() {
@@ -43,6 +44,14 @@ export default function AdminLayout({ children }) {
 
       setAlsoSalesPerson(!!profile.is_sales_person);
       setChecked(true);
+
+      // Non-blocking: badge count for unresolved missed-entry notifications.
+      const { count } = await supabase
+        .from("admin_notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("type", "missed_entry")
+        .eq("resolved", false);
+      setMissedCount(count || 0);
     }
     check();
   }, [router]);
@@ -102,6 +111,17 @@ export default function AdminLayout({ children }) {
             className="text-sm text-indigo-100 hover:text-white"
           >
             Payment Follow-Up
+          </Link>
+          <Link
+            href="/admin/notifications"
+            className="text-sm text-indigo-100 hover:text-white inline-flex items-center gap-1.5"
+          >
+            Notifications
+            {missedCount > 0 && (
+              <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                {missedCount}
+              </span>
+            )}
           </Link>
           <Link
             href="/admin/settings"
