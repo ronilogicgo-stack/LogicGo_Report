@@ -60,7 +60,7 @@ function EditBadge({ count }) {
  * a small "×N" count - not the whole row - whether the edit came from
  * the sales person themselves or from an Admin.
  */
-export default function DailyEntriesTable({ entries, loading, onEdit }) {
+export default function DailyEntriesTable({ entries, loading, onEdit, onDelete }) {
   if (loading) {
     return <p className="text-gray-500">Loading...</p>;
   }
@@ -83,7 +83,7 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
               <th className="p-3 text-right num">Other Tran.</th>
               <th className="p-3 text-right num">Net Sales</th>
               <th className="p-3">Remarks</th>
-              {onEdit && <th className="p-3"></th>}
+              {(onEdit || onDelete) && <th className="p-3"></th>}
             </tr>
           </thead>
           <tbody>
@@ -117,14 +117,25 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
                   {e.remarks}
                   <EditBadge count={editCount(e, "remarks")} />
                 </td>
-                {onEdit && (
-                  <td className="p-3">
-                    <button
-                      onClick={() => onEdit(e)}
-                      className="text-xs text-blue-600 underline"
-                    >
-                      Edit
-                    </button>
+                {(onEdit || onDelete) && (
+                  <td className="p-3 whitespace-nowrap">
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(e)}
+                        className="text-xs text-blue-600 underline"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {onEdit && onDelete && <span className="mx-1.5 text-gray-300">·</span>}
+                    {onDelete && (
+                      <button
+                        onClick={() => onDelete(e)}
+                        className="text-xs text-red-600 underline"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>
@@ -174,13 +185,25 @@ export default function DailyEntriesTable({ entries, loading, onEdit }) {
                 <EditBadge count={editCount(e, "remarks")} />
               </p>
             )}
-            {onEdit && (
-              <button
-                onClick={() => onEdit(e)}
-                className="text-xs text-blue-600 underline mt-2"
-              >
-                Edit
-              </button>
+            {(onEdit || onDelete) && (
+              <div className="flex items-center gap-3 mt-2">
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(e)}
+                    className="text-xs text-blue-600 underline"
+                  >
+                    Edit
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => onDelete(e)}
+                    className="text-xs text-red-600 underline"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             )}
           </div>
         ))}
