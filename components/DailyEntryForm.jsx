@@ -59,6 +59,11 @@ export default function DailyEntryForm({ userId, editingEntry, onSaved, onCancel
         sales_return: Number(form.sales_return) || 0,
         other_transaction: Number(form.other_transaction) || 0,
         remarks: form.remarks,
+        // Saving real numbers always means this day is now properly
+        // reported - even if it started out as an auto Friday holiday,
+        // an Admin-marked Leave, or an empty "please fill this in"
+        // request row.
+        entry_type: "submitted",
       },
       { onConflict: "user_id,entry_date" }
     );
