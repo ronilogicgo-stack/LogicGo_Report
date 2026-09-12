@@ -4,11 +4,16 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { fetchAllRows } from "@/lib/fetchAll";
 
+const OWNER_EMAIL = "roni.logicgo@gmail.com";
+
 export default function TeamManagementPage() {
   const supabase = createClient();
   const [myId, setMyId] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [pending, setPending] = useState([]);
   const [team, setTeam] = useState([]);
+  const [billingMap, setBillingMap] = useState({});
+  const [posMap, setPosMap] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -25,6 +30,17 @@ export default function TeamManagementPage() {
       data: { session },
     } = await supabase.auth.getSession();
     if (session) setMyId(session.user.id);
+    const ownerAccount = session?.user?.email === OWNER_EMAIL;
+    setIsOwner(ownerAccount);
+
+    if (ownerAccount) {
+      const [{ data: billingRows }, { data: posRows }] = await Promise.all([
+        supabase.from("billing_access").select("user_id, access_level"),
+        supabase.from("pos_access").select("user_id, access_level"),
+      ]);
+      setBillingMap(Object.fromEntries((billingRows || []).map((r) => [r.user_id, r.access_level])));
+      setPosMap(Object.fromEntries((posRows || []).map((r) => [r.user_id, r.access_level])));
+    }
 
     const { data: pendingData } = await supabase
       .from("profiles")
@@ -226,6 +242,8 @@ export default function TeamManagementPage() {
       employee_code: person.employee_code || "",
       is_sales_person: person.is_sales_person,
       is_admin: person.is_admin,
+      billing_access: billingMap[person.id] || "none",
+      pos_access: posMap[person.id] || "none",
     });
   }
 
@@ -245,6 +263,25 @@ export default function TeamManagementPage() {
       alert(`Could not save: ${error.message}`);
       return;
     }
+
+    if (isOwner) {
+      if (editForm.billing_access === "none") {
+        await supabase.from("billing_access").delete().eq("user_id", id);
+      } else {
+        await supabase
+          .from("billing_access")
+          .upsert({ user_id: id, access_level: editForm.billing_access }, { onConflict: "user_id" });
+      }
+
+      if (editForm.pos_access === "none") {
+        await supabase.from("pos_access").delete().eq("user_id", id);
+      } else {
+        await supabase
+          .from("pos_access")
+          .upsert({ user_id: id, access_level: editForm.pos_access }, { onConflict: "user_id" });
+      }
+    }
+
     setEditingId(null);
     load();
   }
@@ -432,6 +469,38 @@ export default function TeamManagementPage() {
                         Admin
                       </label>
                     </div>
+                    {isOwner && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t pt-3">
+                        <div>
+                          <label className="text-xs text-gray-500">Billing Module Access</label>
+                          <select
+                            className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
+                            value={editForm.billing_access}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, billing_access: e.target.value })
+                            }
+                          >
+                            <option value="none">No access</option>
+                            <option value="viewer">Viewer</option>
+                            <option value="editor">Editor</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">POS Module Access</label>
+                          <select
+                            className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
+                            value={editForm.pos_access}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, pos_access: e.target.value })
+                            }
+                          >
+                            <option value="none">No access</option>
+                            <option value="viewer">Viewer</option>
+                            <option value="editor">Editor</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => saveProfile(p.id)}
@@ -467,6 +536,18 @@ export default function TeamManagementPage() {
                           <StatusBadge status={p.status} />
                           {p.is_sales_person && <RoleBadge label="Sales Person" />}
                           {p.is_admin && <RoleBadge label="Admin" color="indigo" />}
+                          {isOwner && billingMap[p.id] && (
+                            <RoleBadge
+                              label={`Billing: ${billingMap[p.id] === "editor" ? "Editor" : "Viewer"}`}
+                              color="emerald"
+                            />
+                          )}
+                          {isOwner && posMap[p.id] && (
+                            <RoleBadge
+                              label={`POS: ${posMap[p.id] === "editor" ? "Editor" : "Viewer"}`}
+                              color="teal"
+                            />
+                          )}
                         </div>
                         <p className="text-sm text-gray-500">{p.email}</p>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 mt-1">
@@ -549,6 +630,8 @@ function RoleBadge({ label, color = "gray" }) {
   const styles = {
     gray: "bg-gray-100 text-gray-600",
     indigo: "bg-indigo-100 text-indigo-700",
+    emerald: "bg-emerald-100 text-emerald-700",
+    teal: "bg-teal-100 text-teal-700",
   };
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${styles[color]}`}>
