@@ -16,7 +16,6 @@ export default function AdminLayout({ children }) {
   const [missedCount, setMissedCount] = useState(0);
   const [canSeeBilling, setCanSeeBilling] = useState(false);
   const [canSeePos, setCanSeePos] = useState(false);
-  const [isOwnerAccount, setIsOwnerAccount] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -51,7 +50,6 @@ export default function AdminLayout({ children }) {
       setChecked(true);
 
       const isOwner = session.user.email === OWNER_EMAIL;
-      setIsOwnerAccount(isOwner);
       if (isOwner) {
         setCanSeeBilling(true);
         setCanSeePos(true);
@@ -155,22 +153,6 @@ export default function AdminLayout({ children }) {
             >
               POS
             </Link>
-          )}
-          {isOwnerAccount && (
-            <>
-              <Link
-                href="/billing/access"
-                className="text-sm text-indigo-100 hover:text-white"
-              >
-                Billing Access
-              </Link>
-              <Link
-                href="/pos/access"
-                className="text-sm text-indigo-100 hover:text-white"
-              >
-                POS Access
-              </Link>
-            </>
           )}
           <Link
             href="/admin/requests"
