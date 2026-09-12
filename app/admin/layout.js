@@ -14,7 +14,6 @@ export default function AdminLayout({ children }) {
   const [alsoSalesPerson, setAlsoSalesPerson] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
   const [missedCount, setMissedCount] = useState(0);
-  const [canSeeBilling, setCanSeeBilling] = useState(false);
   const [canSeePos, setCanSeePos] = useState(false);
 
   useEffect(() => {
@@ -51,18 +50,13 @@ export default function AdminLayout({ children }) {
 
       const isOwner = session.user.email === OWNER_EMAIL;
       if (isOwner) {
-        setCanSeeBilling(true);
         setCanSeePos(true);
       } else {
-        const [{ data: billingGrant }, { data: posGrant }] = await Promise.all([
-          supabase
-            .from("billing_access")
-            .select("id")
-            .eq("user_id", session.user.id)
-            .maybeSingle(),
-          supabase.from("pos_access").select("id").eq("user_id", session.user.id).maybeSingle(),
-        ]);
-        setCanSeeBilling(!!billingGrant);
+        const { data: posGrant } = await supabase
+          .from("pos_access")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
         setCanSeePos(!!posGrant);
       }
 
@@ -138,14 +132,6 @@ export default function AdminLayout({ children }) {
           >
             Payment Follow-Up
           </Link>
-          {canSeeBilling && (
-            <Link
-              href="/billing"
-              className="text-sm text-indigo-100 hover:text-white"
-            >
-              Billing
-            </Link>
-          )}
           {canSeePos && (
             <Link
               href="/pos"

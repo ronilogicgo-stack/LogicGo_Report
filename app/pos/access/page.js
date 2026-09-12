@@ -95,7 +95,7 @@ export default function PosAccessPage() {
         Grant a team member Viewer (read-only), Editor (can add/edit
         products, traders &amp; invoices), or Agency Owner (Editor, plus can
         manage this list themselves) access to the POS module. This is
-        separate from Billing and from Sales Person / Admin roles.
+        separate from their Sales Person / Admin role.
       </p>
 
       {!checkingAccess && !canManage && (

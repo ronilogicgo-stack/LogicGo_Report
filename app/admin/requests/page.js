@@ -12,7 +12,6 @@ export default function TeamManagementPage() {
   const [isOwner, setIsOwner] = useState(false);
   const [pending, setPending] = useState([]);
   const [team, setTeam] = useState([]);
-  const [billingMap, setBillingMap] = useState({});
   const [posMap, setPosMap] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -34,11 +33,7 @@ export default function TeamManagementPage() {
     setIsOwner(ownerAccount);
 
     if (ownerAccount) {
-      const [{ data: billingRows }, { data: posRows }] = await Promise.all([
-        supabase.from("billing_access").select("user_id, access_level"),
-        supabase.from("pos_access").select("user_id, access_level"),
-      ]);
-      setBillingMap(Object.fromEntries((billingRows || []).map((r) => [r.user_id, r.access_level])));
+      const { data: posRows } = await supabase.from("pos_access").select("user_id, access_level");
       setPosMap(Object.fromEntries((posRows || []).map((r) => [r.user_id, r.access_level])));
     }
 
@@ -242,7 +237,6 @@ export default function TeamManagementPage() {
       employee_code: person.employee_code || "",
       is_sales_person: person.is_sales_person,
       is_admin: person.is_admin,
-      billing_access: billingMap[person.id] || "none",
       pos_access: posMap[person.id] || "none",
     });
   }
@@ -265,14 +259,6 @@ export default function TeamManagementPage() {
     }
 
     if (isOwner) {
-      if (editForm.billing_access === "none") {
-        await supabase.from("billing_access").delete().eq("user_id", id);
-      } else {
-        await supabase
-          .from("billing_access")
-          .upsert({ user_id: id, access_level: editForm.billing_access }, { onConflict: "user_id" });
-      }
-
       if (editForm.pos_access === "none") {
         await supabase.from("pos_access").delete().eq("user_id", id);
       } else {
@@ -472,21 +458,6 @@ export default function TeamManagementPage() {
                     {isOwner && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t pt-3">
                         <div>
-                          <label className="text-xs text-gray-500">Billing Module Access</label>
-                          <select
-                            className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
-                            value={editForm.billing_access}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, billing_access: e.target.value })
-                            }
-                          >
-                            <option value="none">No access</option>
-                            <option value="viewer">Viewer</option>
-                            <option value="editor">Editor</option>
-                            <option value="agency_owner">Agency Owner</option>
-                          </select>
-                        </div>
-                        <div>
                           <label className="text-xs text-gray-500">POS Module Access</label>
                           <select
                             className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
@@ -538,18 +509,6 @@ export default function TeamManagementPage() {
                           <StatusBadge status={p.status} />
                           {p.is_sales_person && <RoleBadge label="Sales Person" />}
                           {p.is_admin && <RoleBadge label="Admin" color="indigo" />}
-                          {isOwner && billingMap[p.id] && (
-                            <RoleBadge
-                              label={`Billing: ${
-                                billingMap[p.id] === "agency_owner"
-                                  ? "Agency Owner"
-                                  : billingMap[p.id] === "editor"
-                                  ? "Editor"
-                                  : "Viewer"
-                              }`}
-                              color="emerald"
-                            />
-                          )}
                           {isOwner && posMap[p.id] && (
                             <RoleBadge
                               label={`POS: ${
