@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 
+const OWNER_EMAIL = "roni.logicgo@gmail.com";
+
 const BillingAccessContext = createContext({ isAdmin: false, canEdit: false });
 export function useBillingAccess() {
   return useContext(BillingAccessContext);
@@ -41,10 +43,11 @@ export default function BillingLayout({ children }) {
         return;
       }
 
-      let admin = !!profile.is_admin;
-      let editAllowed = admin;
+      const admin = !!profile.is_admin;
+      const owner = session.user.email === OWNER_EMAIL;
+      let editAllowed = owner;
 
-      if (!admin) {
+      if (!owner) {
         const { data: grant } = await supabase
           .from("billing_access")
           .select("access_level")
@@ -52,8 +55,9 @@ export default function BillingLayout({ children }) {
           .maybeSingle();
 
         if (!grant) {
-          // Not an Admin and no grant at all - this module isn't for them.
-          router.replace("/dashboard");
+          // Not the Owner and no explicit grant - even an Admin
+          // doesn't get automatic access to this module.
+          router.replace(admin ? "/admin" : "/dashboard");
           return;
         }
         editAllowed = grant.access_level === "editor";
