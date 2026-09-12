@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 
+const OWNER_EMAIL = "roni.logicgo@gmail.com";
+
 export default function AdminLayout({ children }) {
   const router = useRouter();
   const supabase = createClient();
@@ -12,6 +14,8 @@ export default function AdminLayout({ children }) {
   const [alsoSalesPerson, setAlsoSalesPerson] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
   const [missedCount, setMissedCount] = useState(0);
+  const [canSeeBilling, setCanSeeBilling] = useState(false);
+  const [canSeePos, setCanSeePos] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -44,6 +48,23 @@ export default function AdminLayout({ children }) {
 
       setAlsoSalesPerson(!!profile.is_sales_person);
       setChecked(true);
+
+      const isOwner = session.user.email === OWNER_EMAIL;
+      if (isOwner) {
+        setCanSeeBilling(true);
+        setCanSeePos(true);
+      } else {
+        const [{ data: billingGrant }, { data: posGrant }] = await Promise.all([
+          supabase
+            .from("billing_access")
+            .select("id")
+            .eq("user_id", session.user.id)
+            .maybeSingle(),
+          supabase.from("pos_access").select("id").eq("user_id", session.user.id).maybeSingle(),
+        ]);
+        setCanSeeBilling(!!billingGrant);
+        setCanSeePos(!!posGrant);
+      }
 
       // Non-blocking: badge count for unresolved missed-entry notifications.
       const { count } = await supabase
@@ -117,18 +138,22 @@ export default function AdminLayout({ children }) {
           >
             Payment Follow-Up
           </Link>
-          <Link
-            href="/billing"
-            className="text-sm text-indigo-100 hover:text-white"
-          >
-            Billing
-          </Link>
-          <Link
-            href="/pos"
-            className="text-sm text-indigo-100 hover:text-white"
-          >
-            POS
-          </Link>
+          {canSeeBilling && (
+            <Link
+              href="/billing"
+              className="text-sm text-indigo-100 hover:text-white"
+            >
+              Billing
+            </Link>
+          )}
+          {canSeePos && (
+            <Link
+              href="/pos"
+              className="text-sm text-indigo-100 hover:text-white"
+            >
+              POS
+            </Link>
+          )}
           <Link
             href="/admin/requests"
             className="text-sm text-indigo-100 hover:text-white"
