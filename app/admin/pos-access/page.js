@@ -3,11 +3,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabaseClient";
 
+const OWNER_EMAIL = "roni.logicgo@gmail.com";
+
 export default function PosAccessPage() {
   const supabase = createClient();
   const [team, setTeam] = useState([]);
   const [grants, setGrants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
+  const [checkingOwner, setCheckingOwner] = useState(true);
 
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("viewer");
@@ -31,6 +35,14 @@ export default function PosAccessPage() {
   }, [supabase]);
 
   useEffect(() => {
+    async function checkOwner() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setIsOwner(user?.email === OWNER_EMAIL);
+      setCheckingOwner(false);
+    }
+    checkOwner();
     load();
   }, [load]);
 
@@ -70,44 +82,54 @@ export default function PosAccessPage() {
         always has full access regardless of what's granted here.
       </p>
 
-      <form
-        onSubmit={addGrant}
-        className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"
-      >
-        <div>
-          <label className="text-xs text-slate-500">Team Member</label>
-          <select
-            required
-            className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
-            value={selectedUser}
-            onChange={(e) => setSelectedUser(e.target.value)}
-          >
-            <option value="">Select...</option>
-            {availableTeam.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.full_name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-slate-500">Access Level</label>
-          <select
-            className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
-            value={selectedLevel}
-            onChange={(e) => setSelectedLevel(e.target.value)}
-          >
-            <option value="viewer">Viewer</option>
-            <option value="editor">Editor</option>
-          </select>
-        </div>
-        <button
-          disabled={saving}
-          className="bg-slate-900 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+      {!checkingOwner && !isOwner && (
+        <p className="text-sm bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-4 py-3">
+          Only the account owner ({OWNER_EMAIL}) can grant or remove POS
+          access. You can view the current list below, but changes are
+          disabled for your account.
+        </p>
+      )}
+
+      {isOwner && (
+        <form
+          onSubmit={addGrant}
+          className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"
         >
-          {saving ? "Saving..." : "Grant Access"}
-        </button>
-      </form>
+          <div>
+            <label className="text-xs text-slate-500">Team Member</label>
+            <select
+              required
+              className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+            >
+              <option value="">Select...</option>
+              {availableTeam.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-slate-500">Access Level</label>
+            <select
+              className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+            >
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
+            </select>
+          </div>
+          <button
+            disabled={saving}
+            className="bg-slate-900 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Grant Access"}
+          </button>
+        </form>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {loading ? (
@@ -126,9 +148,11 @@ export default function PosAccessPage() {
                   </span>
                 </p>
               </div>
-              <button onClick={() => removeGrant(g.id)} className="text-xs text-red-600 underline">
-                Remove
-              </button>
+              {isOwner && (
+                <button onClick={() => removeGrant(g.id)} className="text-xs text-red-600 underline">
+                  Remove
+                </button>
+              )}
             </div>
           ))}
         </div>
