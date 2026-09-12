@@ -159,13 +159,13 @@ export default function AdminLayout({ children }) {
           {isOwnerAccount && (
             <>
               <Link
-                href="/admin/billing-access"
+                href="/billing/access"
                 className="text-sm text-indigo-100 hover:text-white"
               >
                 Billing Access
               </Link>
               <Link
-                href="/admin/pos-access"
+                href="/pos/access"
                 className="text-sm text-indigo-100 hover:text-white"
               >
                 POS Access

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabaseClient";
 
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
-const BillingAccessContext = createContext({ isAdmin: false, canEdit: false });
+const BillingAccessContext = createContext({ isAdmin: false, canEdit: false, canManage: false });
 export function useBillingAccess() {
   return useContext(BillingAccessContext);
 }
@@ -20,6 +20,7 @@ export default function BillingLayout({ children }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
+  const [canManage, setCanManage] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -46,6 +47,7 @@ export default function BillingLayout({ children }) {
       const admin = !!profile.is_admin;
       const owner = session.user.email === OWNER_EMAIL;
       let editAllowed = owner;
+      let manageAllowed = owner;
 
       if (!owner) {
         const { data: grant } = await supabase
@@ -60,7 +62,8 @@ export default function BillingLayout({ children }) {
           router.replace(admin ? "/admin" : "/dashboard");
           return;
         }
-        editAllowed = grant.access_level === "editor";
+        editAllowed = grant.access_level === "editor" || grant.access_level === "agency_owner";
+        manageAllowed = grant.access_level === "agency_owner";
       }
 
       const { data: settings } = await supabase
@@ -73,6 +76,7 @@ export default function BillingLayout({ children }) {
       setName(profile.full_name);
       setIsAdmin(admin);
       setCanEdit(editAllowed);
+      setCanManage(manageAllowed);
       setChecked(true);
     }
     check();
@@ -92,7 +96,7 @@ export default function BillingLayout({ children }) {
   }
 
   return (
-    <BillingAccessContext.Provider value={{ isAdmin, canEdit }}>
+    <BillingAccessContext.Provider value={{ isAdmin, canEdit, canManage }}>
       <div className="min-h-screen bg-slate-50">
         <nav className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-md px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4">
@@ -113,9 +117,9 @@ export default function BillingLayout({ children }) {
             <Link href="/billing/clients" className="text-sm text-indigo-100 hover:text-white">
               Clients
             </Link>
-            {isAdmin && (
+            {canManage && (
               <Link
-                href="/admin/billing-access"
+                href="/billing/access"
                 className="text-sm text-indigo-100 hover:text-white"
               >
                 Team Access

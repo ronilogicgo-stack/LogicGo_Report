@@ -5,13 +5,14 @@ import { createClient } from "@/lib/supabaseClient";
 
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
-export default function BillingAccessPage() {
+export default function PosAccessPage() {
   const supabase = createClient();
   const [team, setTeam] = useState([]);
   const [grants, setGrants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
-  const [checkingOwner, setCheckingOwner] = useState(true);
+  const [canManage, setCanManage] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("viewer");
@@ -27,7 +28,7 @@ export default function BillingAccessPage() {
         .in("status", ["approved", "paused"])
         .or("is_sales_person.eq.true,is_admin.eq.true")
         .order("full_name"),
-      supabase.from("billing_access").select("*, profiles:user_id(full_name, email)"),
+      supabase.from("pos_access").select("*, profiles:user_id(full_name, email)"),
     ]);
     setTeam(teamData || []);
     setGrants(grantData || []);
@@ -35,14 +36,26 @@ export default function BillingAccessPage() {
   }, [supabase]);
 
   useEffect(() => {
-    async function checkOwner() {
+    async function checkAccess() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setIsOwner(user?.email === OWNER_EMAIL);
-      setCheckingOwner(false);
+      const owner = user?.email === OWNER_EMAIL;
+      setIsOwner(owner);
+
+      if (owner) {
+        setCanManage(true);
+      } else {
+        const { data: myGrant } = await supabase
+          .from("pos_access")
+          .select("access_level")
+          .eq("user_id", user?.id)
+          .maybeSingle();
+        setCanManage(myGrant?.access_level === "agency_owner");
+      }
+      setCheckingAccess(false);
     }
-    checkOwner();
+    checkAccess();
     load();
   }, [load]);
 
@@ -52,11 +65,8 @@ export default function BillingAccessPage() {
     if (!selectedUser) return;
     setSaving(true);
     const { error: grantError } = await supabase
-      .from("billing_access")
-      .upsert(
-        { user_id: selectedUser, access_level: selectedLevel },
-        { onConflict: "user_id" }
-      );
+      .from("pos_access")
+      .upsert({ user_id: selectedUser, access_level: selectedLevel }, { onConflict: "user_id" });
     if (grantError) {
       setError(grantError.message);
     } else {
@@ -67,33 +77,36 @@ export default function BillingAccessPage() {
   }
 
   async function removeGrant(id) {
-    if (!confirm("Remove this person's access to the Billing module?")) return;
-    await supabase.from("billing_access").delete().eq("id", id);
+    if (!confirm("Remove this person's access to the POS module?")) return;
+    await supabase.from("pos_access").delete().eq("id", id);
     load();
   }
 
   const grantedIds = new Set(grants.map((g) => g.user_id));
   const availableTeam = team.filter((t) => !grantedIds.has(t.id));
 
+  const levelLabel = (level) =>
+    level === "agency_owner" ? "Agency Owner" : level === "editor" ? "Editor" : "Viewer";
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <h1 className="text-lg sm:text-xl font-bold">Billing · Team Access</h1>
+      <h1 className="text-lg sm:text-xl font-bold">POS · Team Access</h1>
       <p className="text-sm text-slate-500">
-        Grant a team member Editor (can add/edit clients &amp; invoices) or
-        Viewer (read-only) access to the Billing module. This is separate
-        from their Sales Person / Admin role - Admin always has full access
-        regardless of what's granted here.
+        Grant a team member Viewer (read-only), Editor (can add/edit
+        products, traders &amp; invoices), or Agency Owner (Editor, plus can
+        manage this list themselves) access to the POS module. This is
+        separate from Billing and from Sales Person / Admin roles.
       </p>
 
-      {!checkingOwner && !isOwner && (
+      {!checkingAccess && !canManage && (
         <p className="text-sm bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-4 py-3">
-          Only the account owner ({OWNER_EMAIL}) can grant or remove Billing
-          access. You can view the current list below, but changes are
-          disabled for your account.
+          You don't have permission to grant or remove POS access. Only the
+          account owner ({OWNER_EMAIL}) or someone made an Agency Owner of
+          POS can do that. You can view the current list below.
         </p>
       )}
 
-      {isOwner && (
+      {canManage && (
         <form
           onSubmit={addGrant}
           className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"
@@ -123,6 +136,7 @@ export default function BillingAccessPage() {
             >
               <option value="viewer">Viewer</option>
               <option value="editor">Editor</option>
+              {isOwner && <option value="agency_owner">Agency Owner</option>}
             </select>
           </div>
           <button
@@ -138,7 +152,7 @@ export default function BillingAccessPage() {
       {loading ? (
         <p className="text-slate-500">Loading...</p>
       ) : grants.length === 0 ? (
-        <p className="text-slate-500">No access granted yet - only Admin can see Billing.</p>
+        <p className="text-slate-500">No access granted yet - only the Owner can see POS.</p>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm divide-y">
           {grants.map((g) => (
@@ -146,16 +160,21 @@ export default function BillingAccessPage() {
               <div>
                 <p className="font-medium">{g.profiles?.full_name}</p>
                 <p className="text-xs text-slate-500">
-                  <span className={g.access_level === "editor" ? "text-emerald-600" : "text-slate-500"}>
-                    {g.access_level === "editor" ? "Editor" : "Viewer"}
+                  <span
+                    className={
+                      g.access_level === "agency_owner"
+                        ? "text-violet-600 font-medium"
+                        : g.access_level === "editor"
+                        ? "text-emerald-600"
+                        : "text-slate-500"
+                    }
+                  >
+                    {levelLabel(g.access_level)}
                   </span>
                 </p>
               </div>
-              {isOwner && (
-                <button
-                  onClick={() => removeGrant(g.id)}
-                  className="text-xs text-red-600 underline"
-                >
+              {canManage && (g.access_level !== "agency_owner" || isOwner) && (
+                <button onClick={() => removeGrant(g.id)} className="text-xs text-red-600 underline">
                   Remove
                 </button>
               )}

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabaseClient";
 
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
-const PosAccessContext = createContext({ isAdmin: false, canEdit: false });
+const PosAccessContext = createContext({ isAdmin: false, canEdit: false, canManage: false });
 export function usePosAccess() {
   return useContext(PosAccessContext);
 }
@@ -20,6 +20,7 @@ export default function PosLayout({ children }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
+  const [canManage, setCanManage] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -46,6 +47,7 @@ export default function PosLayout({ children }) {
       const admin = !!profile.is_admin;
       const owner = session.user.email === OWNER_EMAIL;
       let editAllowed = owner;
+      let manageAllowed = owner;
 
       if (!owner) {
         const { data: grant } = await supabase
@@ -60,7 +62,8 @@ export default function PosLayout({ children }) {
           router.replace(admin ? "/admin" : "/dashboard");
           return;
         }
-        editAllowed = grant.access_level === "editor";
+        editAllowed = grant.access_level === "editor" || grant.access_level === "agency_owner";
+        manageAllowed = grant.access_level === "agency_owner";
       }
 
       const { data: settings } = await supabase
@@ -73,6 +76,7 @@ export default function PosLayout({ children }) {
       setName(profile.full_name);
       setIsAdmin(admin);
       setCanEdit(editAllowed);
+      setCanManage(manageAllowed);
       setChecked(true);
     }
     check();
@@ -92,7 +96,7 @@ export default function PosLayout({ children }) {
   }
 
   return (
-    <PosAccessContext.Provider value={{ isAdmin, canEdit }}>
+    <PosAccessContext.Provider value={{ isAdmin, canEdit, canManage }}>
       <div className="min-h-screen bg-slate-50">
         <nav className="bg-gradient-to-r from-emerald-600 to-teal-600 shadow-md px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4">
@@ -119,8 +123,8 @@ export default function PosLayout({ children }) {
             <Link href="/pos/sales" className="text-sm text-emerald-100 hover:text-white">
               Sales
             </Link>
-            {isAdmin && (
-              <Link href="/admin/pos-access" className="text-sm text-emerald-100 hover:text-white">
+            {canManage && (
+              <Link href="/pos/access" className="text-sm text-emerald-100 hover:text-white">
                 Team Access
               </Link>
             )}

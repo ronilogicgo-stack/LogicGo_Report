@@ -483,6 +483,7 @@ export default function TeamManagementPage() {
                             <option value="none">No access</option>
                             <option value="viewer">Viewer</option>
                             <option value="editor">Editor</option>
+                            <option value="agency_owner">Agency Owner</option>
                           </select>
                         </div>
                         <div>
@@ -497,6 +498,7 @@ export default function TeamManagementPage() {
                             <option value="none">No access</option>
                             <option value="viewer">Viewer</option>
                             <option value="editor">Editor</option>
+                            <option value="agency_owner">Agency Owner</option>
                           </select>
                         </div>
                       </div>
@@ -538,13 +540,25 @@ export default function TeamManagementPage() {
                           {p.is_admin && <RoleBadge label="Admin" color="indigo" />}
                           {isOwner && billingMap[p.id] && (
                             <RoleBadge
-                              label={`Billing: ${billingMap[p.id] === "editor" ? "Editor" : "Viewer"}`}
+                              label={`Billing: ${
+                                billingMap[p.id] === "agency_owner"
+                                  ? "Agency Owner"
+                                  : billingMap[p.id] === "editor"
+                                  ? "Editor"
+                                  : "Viewer"
+                              }`}
                               color="emerald"
                             />
                           )}
                           {isOwner && posMap[p.id] && (
                             <RoleBadge
-                              label={`POS: ${posMap[p.id] === "editor" ? "Editor" : "Viewer"}`}
+                              label={`POS: ${
+                                posMap[p.id] === "agency_owner"
+                                  ? "Agency Owner"
+                                  : posMap[p.id] === "editor"
+                                  ? "Editor"
+                                  : "Viewer"
+                              }`}
                               color="teal"
                             />
                           )}
