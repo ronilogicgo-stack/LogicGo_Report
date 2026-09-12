@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Fragment } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { fmt } from "@/lib/calculations";
 import { usePosAccess } from "../layout";
@@ -22,7 +23,17 @@ export default function PosProductsPage() {
   const [adjustNote, setAdjustNote] = useState("");
 
   function blankForm() {
-    return { sku: "", name: "", category: "", unit: "pcs", purchase_price: 0, sales_price: 0, opening_stock: 0 };
+    return {
+      sku: "",
+      name: "",
+      category: "",
+      unit: "pcs",
+      purchase_price: 0,
+      sales_price: 0,
+      opening_stock: 0,
+      has_serial: false,
+      opening_serials: "",
+    };
   }
 
   const load = useCallback(async () => {
@@ -52,6 +63,8 @@ export default function PosProductsPage() {
       purchase_price: p.purchase_price,
       sales_price: p.sales_price,
       opening_stock: 0,
+      has_serial: p.has_serial,
+      opening_serials: "",
     });
     setShowForm(true);
   }
@@ -95,6 +108,7 @@ export default function PosProductsPage() {
           unit: form.unit,
           purchase_price: Number(form.purchase_price) || 0,
           sales_price: Number(form.sales_price) || 0,
+          has_serial: form.has_serial,
           created_by: session?.user?.id || null,
         })
         .select()
@@ -104,15 +118,45 @@ export default function PosProductsPage() {
         setSaving(false);
         return;
       }
-      const opening = Number(form.opening_stock) || 0;
-      if (opening !== 0) {
-        await supabase.from("pos_stock_ledger").insert({
-          product_id: newProduct.id,
-          change_qty: opening,
-          reference_type: "opening",
-          note: "Opening stock",
-          created_by: session?.user?.id || null,
-        });
+
+      if (form.has_serial) {
+        const serials = form.opening_serials
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (serials.length > 0) {
+          const { error: serialError } = await supabase.from("pos_serial_numbers").insert(
+            serials.map((serial_no) => ({
+              product_id: newProduct.id,
+              serial_no,
+              created_by: session?.user?.id || null,
+            }))
+          );
+          if (serialError) {
+            setError(`Product created, but serials failed: ${serialError.message}`);
+            setSaving(false);
+            load();
+            return;
+          }
+          await supabase.from("pos_stock_ledger").insert({
+            product_id: newProduct.id,
+            change_qty: serials.length,
+            reference_type: "opening",
+            note: "Opening stock (serialized)",
+            created_by: session?.user?.id || null,
+          });
+        }
+      } else {
+        const opening = Number(form.opening_stock) || 0;
+        if (opening !== 0) {
+          await supabase.from("pos_stock_ledger").insert({
+            product_id: newProduct.id,
+            change_qty: opening,
+            reference_type: "opening",
+            note: "Opening stock",
+            created_by: session?.user?.id || null,
+          });
+        }
       }
     }
 
@@ -186,15 +230,46 @@ export default function PosProductsPage() {
               value={form.sales_price}
               onChange={(v) => setForm({ ...form, sales_price: v })}
             />
-            {!editingId && (
-              <Input
-                label="Opening Stock"
-                type="number"
-                value={form.opening_stock}
-                onChange={(v) => setForm({ ...form, opening_stock: v })}
-              />
-            )}
           </div>
+
+          {!editingId && (
+            <div className="border-t pt-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.has_serial}
+                  onChange={(e) => setForm({ ...form, has_serial: e.target.checked })}
+                />
+                Track by Serial Number (e.g. IMEI for phones/gadgets) — each unit is tracked
+                individually instead of just a quantity. Can't be changed after saving.
+              </label>
+
+              {form.has_serial ? (
+                <div className="mt-2">
+                  <label className="text-xs text-slate-500">
+                    Opening Serial Numbers (one per line, optional)
+                  </label>
+                  <textarea
+                    className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm font-mono"
+                    rows={4}
+                    placeholder={"e.g.\n351234567891234\n351234567891235"}
+                    value={form.opening_serials}
+                    onChange={(e) => setForm({ ...form, opening_serials: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <Input
+                    label="Opening Stock"
+                    type="number"
+                    value={form.opening_stock}
+                    onChange={(v) => setForm({ ...form, opening_stock: v })}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">
             <button disabled={saving} className="bg-black text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50">
@@ -229,7 +304,14 @@ export default function PosProductsPage() {
               {products.map((p) => (
                 <Fragment key={p.id}>
                   <tr className="border-t">
-                    <td className="p-3 font-medium">{p.name}</td>
+                    <td className="p-3 font-medium">
+                      {p.name}
+                      {p.has_serial && (
+                        <span className="ml-2 text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full align-middle">
+                          Serial Tracked
+                        </span>
+                      )}
+                    </td>
                     <td className="p-3 text-slate-500">{p.sku || "—"}</td>
                     <td className="p-3 text-slate-500">{p.category || "—"}</td>
                     <td className="p-3 text-right num">{fmt(p.purchase_price)}</td>
@@ -239,12 +321,21 @@ export default function PosProductsPage() {
                     </td>
                     {canEdit && (
                       <td className="p-2 whitespace-nowrap space-x-2">
-                        <button
-                          onClick={() => setAdjustingId(adjustingId === p.id ? null : p.id)}
-                          className="text-xs text-emerald-600 underline"
-                        >
-                          Adjust Stock
-                        </button>
+                        {p.has_serial ? (
+                          <Link
+                            href={`/pos/products/${p.id}/serials`}
+                            className="text-xs text-violet-600 underline"
+                          >
+                            Manage Serials
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => setAdjustingId(adjustingId === p.id ? null : p.id)}
+                            className="text-xs text-emerald-600 underline"
+                          >
+                            Adjust Stock
+                          </button>
+                        )}
                         <button onClick={() => startEdit(p)} className="text-xs text-blue-600 underline">
                           Edit
                         </button>
@@ -254,7 +345,7 @@ export default function PosProductsPage() {
                       </td>
                     )}
                   </tr>
-                  {adjustingId === p.id && (
+                  {adjustingId === p.id && !p.has_serial && (
                     <tr className="bg-slate-50 border-t">
                       <td colSpan={7} className="p-3">
                         <form onSubmit={saveAdjustment} className="flex flex-wrap items-end gap-2">

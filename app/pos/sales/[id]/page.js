@@ -15,6 +15,7 @@ export default function PosInvoiceDetailPage() {
 
   const [invoice, setInvoice] = useState(null);
   const [items, setItems] = useState([]);
+  const [serialsByProduct, setSerialsByProduct] = useState({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -33,6 +34,18 @@ export default function PosInvoiceDetailPage() {
     setInvoice(inv || null);
     setItems(itemRows || []);
     setPaidInput(inv ? String(inv.paid_amount) : "");
+
+    const { data: soldSerials } = await supabase
+      .from("pos_serial_numbers")
+      .select("id, serial_no, product_id")
+      .eq("sales_invoice_id", id);
+    const grouped = {};
+    for (const s of soldSerials || []) {
+      if (!grouped[s.product_id]) grouped[s.product_id] = [];
+      grouped[s.product_id].push(s);
+    }
+    setSerialsByProduct(grouped);
+
     setLoading(false);
   }, [supabase, id]);
 
@@ -82,6 +95,20 @@ export default function PosInvoiceDetailPage() {
       setError(reverseError.message);
       setBusy(false);
       return;
+    }
+
+    // Restore any sold serial numbers back to in-stock.
+    const allSoldSerialIds = Object.values(serialsByProduct).flatMap((list) => list.map((s) => s.id));
+    if (allSoldSerialIds.length > 0) {
+      const { error: serialRestoreError } = await supabase
+        .from("pos_serial_numbers")
+        .update({ status: "in_stock", sales_invoice_id: null, sold_at: null })
+        .in("id", allSoldSerialIds);
+      if (serialRestoreError) {
+        setError(serialRestoreError.message);
+        setBusy(false);
+        return;
+      }
     }
 
     const { error: statusError } = await supabase
@@ -152,8 +179,22 @@ export default function PosInvoiceDetailPage() {
           </thead>
           <tbody>
             {items.map((it) => (
-              <tr key={it.id} className="border-t">
-                <td className="py-2">{it.description}</td>
+              <tr key={it.id} className="border-t align-top">
+                <td className="py-2">
+                  {it.description}
+                  {serialsByProduct[it.product_id] && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {serialsByProduct[it.product_id].map((s) => (
+                        <span
+                          key={s.id}
+                          className="text-[10px] font-mono bg-violet-50 text-violet-700 px-1.5 py-0.5 rounded"
+                        >
+                          {s.serial_no}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </td>
                 <td className="py-2 text-right num">{it.quantity}</td>
                 <td className="py-2 text-right num">{fmt(it.rate)}</td>
                 <td className="py-2 text-right num">{fmt(it.amount)}</td>

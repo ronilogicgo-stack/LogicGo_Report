@@ -9,7 +9,17 @@ import { sumItems } from "@/lib/pos";
 let itemSeq = 0;
 function blankItem() {
   itemSeq += 1;
-  return { key: `new-${itemSeq}`, product_id: "", description: "", quantity: 1, rate: 0, maxStock: null };
+  return {
+    key: `new-${itemSeq}`,
+    product_id: "",
+    description: "",
+    quantity: 1,
+    rate: 0,
+    maxStock: null,
+    hasSerial: false,
+    availableSerials: [],
+    selectedSerialIds: [],
+  };
 }
 
 export default function NewSalePage() {
@@ -35,7 +45,10 @@ export default function NewSalePage() {
     setLoadingData(true);
     const [{ data: cust }, { data: prod }] = await Promise.all([
       supabase.from("pos_traders").select("id, name").eq("trader_type", "customer").order("name"),
-      supabase.from("pos_products").select("id, name, sales_price, current_stock, unit").order("name"),
+      supabase
+        .from("pos_products")
+        .select("id, name, sales_price, current_stock, unit, has_serial")
+        .order("name"),
     ]);
     setCustomers(cust || []);
     setProducts(prod || []);
@@ -46,22 +59,51 @@ export default function NewSalePage() {
     loadData();
   }, [loadData]);
 
-  function updateItem(key, field, value) {
+  async function updateItem(key, field, value) {
+    if (field === "product_id") {
+      const product = products.find((p) => p.id === value);
+      let availableSerials = [];
+      if (product?.has_serial) {
+        const { data } = await supabase
+          .from("pos_serial_numbers")
+          .select("id, serial_no")
+          .eq("product_id", value)
+          .eq("status", "in_stock")
+          .order("serial_no");
+        availableSerials = data || [];
+      }
+      setItems((prev) =>
+        prev.map((it) =>
+          it.key === key
+            ? {
+                ...it,
+                product_id: value,
+                description: product?.name || "",
+                rate: product?.sales_price || 0,
+                maxStock: product?.current_stock ?? null,
+                hasSerial: !!product?.has_serial,
+                availableSerials,
+                selectedSerialIds: [],
+                quantity: product?.has_serial ? 0 : it.quantity,
+              }
+            : it
+        )
+      );
+      return;
+    }
+
+    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, [field]: value } : it)));
+  }
+
+  function toggleSerial(key, serialId) {
     setItems((prev) =>
       prev.map((it) => {
         if (it.key !== key) return it;
-        const updated = { ...it, [field]: value };
-        if (field === "product_id") {
-          const product = products.find((p) => p.id === value);
-          if (product) {
-            updated.description = product.name;
-            updated.rate = product.sales_price;
-            updated.maxStock = product.current_stock;
-          } else {
-            updated.maxStock = null;
-          }
-        }
-        return updated;
+        const already = it.selectedSerialIds.includes(serialId);
+        const selectedSerialIds = already
+          ? it.selectedSerialIds.filter((id) => id !== serialId)
+          : [...it.selectedSerialIds, serialId];
+        return { ...it, selectedSerialIds, quantity: selectedSerialIds.length };
       })
     );
   }
@@ -91,6 +133,13 @@ export default function NewSalePage() {
     const cleanItems = items.filter((it) => it.product_id && Number(it.quantity) > 0);
     if (cleanItems.length === 0) {
       setError("Add at least one product line.");
+      return;
+    }
+    const missingSerials = items.find(
+      (it) => it.product_id && it.hasSerial && it.selectedSerialIds.length === 0
+    );
+    if (missingSerials) {
+      setError(`Please pick at least one serial number for "${missingSerials.description}".`);
       return;
     }
     if (overStock) {
@@ -160,6 +209,20 @@ export default function NewSalePage() {
       setError(`Invoice saved but stock update failed: ${stockError.message}`);
       setSaving(false);
       return;
+    }
+
+    // Mark every picked serial number as sold, linked to this invoice.
+    const serializedIds = cleanItems.flatMap((it) => (it.hasSerial ? it.selectedSerialIds : []));
+    if (serializedIds.length > 0) {
+      const { error: serialError } = await supabase
+        .from("pos_serial_numbers")
+        .update({ status: "sold", sales_invoice_id: invoice.id, sold_at: new Date().toISOString() })
+        .in("id", serializedIds);
+      if (serialError) {
+        setError(`Invoice saved but marking serials as sold failed: ${serialError.message}`);
+        setSaving(false);
+        return;
+      }
     }
 
     router.push(`/pos/sales/${invoice.id}`);
@@ -237,39 +300,74 @@ export default function NewSalePage() {
           <p className="text-xs text-slate-500 mb-2">Products</p>
           <div className="space-y-2">
             {items.map((it) => (
-              <div key={it.key} className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
-                <select
-                  className="flex-1 min-w-[160px] border rounded-lg px-3 py-2 text-sm"
-                  value={it.product_id}
-                  onChange={(e) => updateItem(it.key, "product_id", e.target.value)}
-                >
-                  <option value="">Select product...</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.current_stock} {p.unit} left)
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  placeholder="Qty"
-                  className="w-20 border rounded-lg px-3 py-2 text-sm"
-                  value={it.quantity}
-                  onChange={(e) => updateItem(it.key, "quantity", e.target.value)}
-                />
-                <input
-                  type="number"
-                  placeholder="Rate"
-                  className="w-28 border rounded-lg px-3 py-2 text-sm"
-                  value={it.rate}
-                  onChange={(e) => updateItem(it.key, "rate", e.target.value)}
-                />
-                <span className="w-24 text-right text-sm num">
-                  {fmt((Number(it.quantity) || 0) * (Number(it.rate) || 0))}
-                </span>
-                <button type="button" onClick={() => removeItem(it.key)} className="text-red-600 text-xs px-2">
-                  ✕
-                </button>
+              <div key={it.key} className="border rounded-lg p-2 space-y-2">
+                <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+                  <select
+                    className="flex-1 min-w-[160px] border rounded-lg px-3 py-2 text-sm"
+                    value={it.product_id}
+                    onChange={(e) => updateItem(it.key, "product_id", e.target.value)}
+                  >
+                    <option value="">Select product...</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.current_stock} {p.unit} left){p.has_serial ? " · Serial" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {it.hasSerial ? (
+                    <span className="w-20 text-center text-sm border rounded-lg px-3 py-2 bg-slate-50">
+                      Qty: {it.quantity}
+                    </span>
+                  ) : (
+                    <input
+                      type="number"
+                      placeholder="Qty"
+                      className="w-20 border rounded-lg px-3 py-2 text-sm"
+                      value={it.quantity}
+                      onChange={(e) => updateItem(it.key, "quantity", e.target.value)}
+                    />
+                  )}
+                  <input
+                    type="number"
+                    placeholder="Rate"
+                    className="w-28 border rounded-lg px-3 py-2 text-sm"
+                    value={it.rate}
+                    onChange={(e) => updateItem(it.key, "rate", e.target.value)}
+                  />
+                  <span className="w-24 text-right text-sm num">
+                    {fmt((Number(it.quantity) || 0) * (Number(it.rate) || 0))}
+                  </span>
+                  <button type="button" onClick={() => removeItem(it.key)} className="text-red-600 text-xs px-2">
+                    ✕
+                  </button>
+                </div>
+                {it.hasSerial && (
+                  <div className="pl-1">
+                    {it.availableSerials.length === 0 ? (
+                      <p className="text-xs text-red-600">No units in stock for this product.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {it.availableSerials.map((s) => {
+                          const picked = it.selectedSerialIds.includes(s.id);
+                          return (
+                            <button
+                              type="button"
+                              key={s.id}
+                              onClick={() => toggleSerial(it.key, s.id)}
+                              className={`text-xs font-mono px-2 py-1 rounded border ${
+                                picked
+                                  ? "bg-violet-600 text-white border-violet-600"
+                                  : "bg-white text-slate-600 border-slate-300"
+                              }`}
+                            >
+                              {s.serial_no}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
