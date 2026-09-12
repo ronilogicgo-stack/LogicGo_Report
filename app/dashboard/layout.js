@@ -14,6 +14,7 @@ export default function DashboardLayout({ children }) {
   const [alsoAdmin, setAlsoAdmin] = useState(false);
   const [hasFollowupAccess, setHasFollowupAccess] = useState(false);
   const [hasPosAccess, setHasPosAccess] = useState(false);
+  const [hasAnnualReportAccess, setHasAnnualReportAccess] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
 
   useEffect(() => {
@@ -68,6 +69,13 @@ export default function DashboardLayout({ children }) {
         .eq("user_id", session.user.id)
         .maybeSingle();
       setHasPosAccess(!!posGrant);
+
+      const { data: reportGrant } = await supabase
+        .from("annual_report_access")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      setHasAnnualReportAccess(!!reportGrant);
 
       setChecked(true);
     }
@@ -128,6 +136,11 @@ export default function DashboardLayout({ children }) {
           {hasPosAccess && (
             <Link href="/pos" className="text-sm text-indigo-100 hover:text-white">
               POS
+            </Link>
+          )}
+          {hasAnnualReportAccess && (
+            <Link href="/annual-report" className="text-sm text-indigo-100 hover:text-white">
+              Annual Report
             </Link>
           )}
           {alsoAdmin && (
