@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { fmt, dateKey } from "@/lib/calculations";
@@ -17,14 +17,15 @@ function blankItem() {
     rate: 0,
     maxStock: null,
     hasSerial: false,
-    availableSerials: [],
     selectedSerialIds: [],
+    scannedSerials: [], // [{ id, serial_no }] - only what THIS sale has scanned, never the whole stock list
   };
 }
 
 export default function NewSalePage() {
   const supabase = createClient();
   const router = useRouter();
+  const scanInputRef = useRef(null);
 
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -39,7 +40,11 @@ export default function NewSalePage() {
   const [tax, setTax] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState([blankItem()]);
+  const [items, setItems] = useState([]);
+
+  const [scanValue, setScanValue] = useState("");
+  const [scanError, setScanError] = useState("");
+  const [scanning, setScanning] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoadingData(true);
@@ -59,19 +64,12 @@ export default function NewSalePage() {
     loadData();
   }, [loadData]);
 
-  async function updateItem(key, field, value) {
+  // --- Non-serialized products: manual "Select product" + quantity ---
+  const nonSerialProducts = products.filter((p) => !p.has_serial);
+
+  function updateItem(key, field, value) {
     if (field === "product_id") {
-      const product = products.find((p) => p.id === value);
-      let availableSerials = [];
-      if (product?.has_serial) {
-        const { data } = await supabase
-          .from("pos_serial_numbers")
-          .select("id, serial_no")
-          .eq("product_id", value)
-          .eq("status", "in_stock")
-          .order("serial_no");
-        availableSerials = data || [];
-      }
+      const product = nonSerialProducts.find((p) => p.id === value);
       setItems((prev) =>
         prev.map((it) =>
           it.key === key
@@ -81,46 +79,118 @@ export default function NewSalePage() {
                 description: product?.name || "",
                 rate: product?.sales_price || 0,
                 maxStock: product?.current_stock ?? null,
-                hasSerial: !!product?.has_serial,
-                availableSerials,
-                selectedSerialIds: [],
-                quantity: product?.has_serial ? 0 : it.quantity,
               }
             : it
         )
       );
       return;
     }
-
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, [field]: value } : it)));
   }
 
-  function toggleSerial(key, serialId) {
-    setItems((prev) =>
-      prev.map((it) => {
-        if (it.key !== key) return it;
-        const already = it.selectedSerialIds.includes(serialId);
-        const selectedSerialIds = already
-          ? it.selectedSerialIds.filter((id) => id !== serialId)
-          : [...it.selectedSerialIds, serialId];
-        return { ...it, selectedSerialIds, quantity: selectedSerialIds.length };
-      })
-    );
-  }
-
-  function addItem() {
+  function addManualItem() {
     setItems((prev) => [...prev, blankItem()]);
   }
 
   function removeItem(key) {
-    setItems((prev) => (prev.length > 1 ? prev.filter((it) => it.key !== key) : prev));
+    setItems((prev) => prev.filter((it) => it.key !== key));
+  }
+
+  // --- Serialized products: scan or type a serial number, product is
+  // auto-detected from it - no need to browse a product list at all. ---
+  async function handleScanSubmit(e) {
+    e.preventDefault();
+    const serialNo = scanValue.trim();
+    if (!serialNo) return;
+    setScanError("");
+    setScanning(true);
+
+    const { data: serial, error: lookupError } = await supabase
+      .from("pos_serial_numbers")
+      .select("id, serial_no, product_id")
+      .eq("serial_no", serialNo)
+      .eq("status", "in_stock")
+      .maybeSingle();
+
+    setScanning(false);
+
+    if (lookupError) {
+      setScanError(lookupError.message);
+      return;
+    }
+    if (!serial) {
+      setScanError(`No in-stock unit found with serial "${serialNo}".`);
+      return;
+    }
+    if (items.some((it) => it.selectedSerialIds.includes(serial.id))) {
+      setScanError("That unit has already been added to this sale.");
+      return;
+    }
+
+    const product = products.find((p) => p.id === serial.product_id);
+    if (!product) {
+      setScanError("Found the serial, but couldn't load its product.");
+      return;
+    }
+
+    setItems((prev) => {
+      const idx = prev.findIndex((it) => it.product_id === serial.product_id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        const it = updated[idx];
+        updated[idx] = {
+          ...it,
+          selectedSerialIds: [...it.selectedSerialIds, serial.id],
+          scannedSerials: [...it.scannedSerials, serial],
+          quantity: it.selectedSerialIds.length + 1,
+        };
+        return updated;
+      }
+      return [
+        ...prev,
+        {
+          key: blankItem().key,
+          product_id: product.id,
+          description: product.name,
+          quantity: 1,
+          rate: product.sales_price,
+          maxStock: product.current_stock,
+          hasSerial: true,
+          selectedSerialIds: [serial.id],
+          scannedSerials: [serial],
+        },
+      ];
+    });
+
+    setScanValue("");
+    scanInputRef.current?.focus();
+  }
+
+  function removeScannedSerial(key, serialId) {
+    setItems((prev) => {
+      const idx = prev.findIndex((it) => it.key === key);
+      if (idx < 0) return prev;
+      const it = prev[idx];
+      const selectedSerialIds = it.selectedSerialIds.filter((id) => id !== serialId);
+      if (selectedSerialIds.length === 0) {
+        return prev.filter((row) => row.key !== key);
+      }
+      const updated = [...prev];
+      updated[idx] = {
+        ...it,
+        selectedSerialIds,
+        scannedSerials: it.scannedSerials.filter((s) => s.id !== serialId),
+        quantity: selectedSerialIds.length,
+      };
+      return updated;
+    });
   }
 
   const subtotal = sumItems(items);
   const total = subtotal - Number(discount || 0) + Number(tax || 0);
 
   const overStock = items.find(
-    (it) => it.maxStock !== null && Number(it.quantity) > Number(it.maxStock)
+    (it) => !it.hasSerial && it.maxStock !== null && Number(it.quantity) > Number(it.maxStock)
   );
 
   async function save(e) {
@@ -132,14 +202,7 @@ export default function NewSalePage() {
     }
     const cleanItems = items.filter((it) => it.product_id && Number(it.quantity) > 0);
     if (cleanItems.length === 0) {
-      setError("Add at least one product line.");
-      return;
-    }
-    const missingSerials = items.find(
-      (it) => it.product_id && it.hasSerial && it.selectedSerialIds.length === 0
-    );
-    if (missingSerials) {
-      setError(`Please pick at least one serial number for "${missingSerials.description}".`);
+      setError("Add at least one product - scan a serial number, or add a non-serialized product line.");
       return;
     }
     if (overStock) {
@@ -211,7 +274,7 @@ export default function NewSalePage() {
       return;
     }
 
-    // Mark every picked serial number as sold, linked to this invoice.
+    // Mark every scanned serial number as sold, linked to this invoice.
     const serializedIds = cleanItems.flatMap((it) => (it.hasSerial ? it.selectedSerialIds : []));
     if (serializedIds.length > 0) {
       const { error: serialError } = await supabase
@@ -296,88 +359,126 @@ export default function NewSalePage() {
           )}
         </div>
 
+        {/* --- Scan / type a serial number: product is auto-detected --- */}
+        <div className="border-2 border-dashed border-violet-300 bg-violet-50/50 rounded-lg p-3">
+          <label className="text-xs font-medium text-violet-700">
+            📷 Scan or Type Serial Number (for serialized products)
+          </label>
+          <div className="flex gap-2 mt-1">
+            <input
+              ref={scanInputRef}
+              type="text"
+              autoFocus
+              placeholder="Scan barcode or type serial number, then press Enter"
+              className="flex-1 border rounded-lg px-3 py-2 text-sm font-mono"
+              value={scanValue}
+              onChange={(e) => setScanValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleScanSubmit(e);
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleScanSubmit}
+              disabled={scanning}
+              className="bg-violet-600 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+          {scanError && <p className="text-xs text-red-600 mt-1">{scanError}</p>}
+        </div>
+
         <div>
-          <p className="text-xs text-slate-500 mb-2">Products</p>
-          <div className="space-y-2">
-            {items.map((it) => (
-              <div key={it.key} className="border rounded-lg p-2 space-y-2">
-                <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
-                  <select
-                    className="flex-1 min-w-[160px] border rounded-lg px-3 py-2 text-sm"
-                    value={it.product_id}
-                    onChange={(e) => updateItem(it.key, "product_id", e.target.value)}
-                  >
-                    <option value="">Select product...</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.current_stock} {p.unit} left){p.has_serial ? " · Serial" : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {it.hasSerial ? (
-                    <span className="w-20 text-center text-sm border rounded-lg px-3 py-2 bg-slate-50">
-                      Qty: {it.quantity}
-                    </span>
-                  ) : (
+          <p className="text-xs text-slate-500 mb-2">Items in this sale</p>
+          {items.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">
+              Nothing added yet - scan a serial number above, or add a non-serialized product below.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {items.map((it) => (
+                <div key={it.key} className="border rounded-lg p-2 space-y-1.5">
+                  <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+                    {it.hasSerial ? (
+                      <span className="flex-1 min-w-[160px] text-sm font-medium">
+                        {it.description}
+                        <span className="ml-1.5 text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">
+                          Serial
+                        </span>
+                      </span>
+                    ) : (
+                      <select
+                        className="flex-1 min-w-[160px] border rounded-lg px-3 py-2 text-sm"
+                        value={it.product_id}
+                        onChange={(e) => updateItem(it.key, "product_id", e.target.value)}
+                      >
+                        <option value="">Select product...</option>
+                        {nonSerialProducts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.current_stock} {p.unit} left)
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {it.hasSerial ? (
+                      <span className="w-20 text-center text-sm border rounded-lg px-3 py-2 bg-slate-50">
+                        Qty: {it.quantity}
+                      </span>
+                    ) : (
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        className="w-20 border rounded-lg px-3 py-2 text-sm"
+                        value={it.quantity}
+                        onChange={(e) => updateItem(it.key, "quantity", e.target.value)}
+                      />
+                    )}
                     <input
                       type="number"
-                      placeholder="Qty"
-                      className="w-20 border rounded-lg px-3 py-2 text-sm"
-                      value={it.quantity}
-                      onChange={(e) => updateItem(it.key, "quantity", e.target.value)}
+                      placeholder="Rate"
+                      className="w-28 border rounded-lg px-3 py-2 text-sm"
+                      value={it.rate}
+                      onChange={(e) => updateItem(it.key, "rate", e.target.value)}
+                      disabled={it.hasSerial}
                     />
-                  )}
-                  <input
-                    type="number"
-                    placeholder="Rate"
-                    className="w-28 border rounded-lg px-3 py-2 text-sm"
-                    value={it.rate}
-                    onChange={(e) => updateItem(it.key, "rate", e.target.value)}
-                  />
-                  <span className="w-24 text-right text-sm num">
-                    {fmt((Number(it.quantity) || 0) * (Number(it.rate) || 0))}
-                  </span>
-                  <button type="button" onClick={() => removeItem(it.key)} className="text-red-600 text-xs px-2">
-                    ✕
-                  </button>
-                </div>
-                {it.hasSerial && (
-                  <div className="pl-1">
-                    {it.availableSerials.length === 0 ? (
-                      <p className="text-xs text-red-600">No units in stock for this product.</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {it.availableSerials.map((s) => {
-                          const picked = it.selectedSerialIds.includes(s.id);
-                          return (
-                            <button
-                              type="button"
-                              key={s.id}
-                              onClick={() => toggleSerial(it.key, s.id)}
-                              className={`text-xs font-mono px-2 py-1 rounded border ${
-                                picked
-                                  ? "bg-violet-600 text-white border-violet-600"
-                                  : "bg-white text-slate-600 border-slate-300"
-                              }`}
-                            >
-                              {s.serial_no}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <span className="w-24 text-right text-sm num">
+                      {fmt((Number(it.quantity) || 0) * (Number(it.rate) || 0))}
+                    </span>
+                    <button type="button" onClick={() => removeItem(it.key)} className="text-red-600 text-xs px-2">
+                      ✕
+                    </button>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
+                  {it.hasSerial && (
+                    <div className="flex flex-wrap gap-1.5 pl-1">
+                      {it.scannedSerials.map((s) => (
+                        <span
+                          key={s.id}
+                          className="inline-flex items-center gap-1 text-xs font-mono bg-violet-600 text-white px-2 py-0.5 rounded"
+                        >
+                          {s.serial_no}
+                          <button
+                            type="button"
+                            onClick={() => removeScannedSerial(it.key, s.id)}
+                            className="hover:text-violet-200"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           {overStock && (
             <p className="text-sm text-red-600 mt-2">
               Not enough stock for "{overStock.description}" — only {overStock.maxStock} left.
             </p>
           )}
-          <button type="button" onClick={addItem} className="text-sm text-blue-600 underline mt-2">
-            + Add product line
+          <button type="button" onClick={addManualItem} className="text-sm text-blue-600 underline mt-2">
+            + Add non-serialized product line
           </button>
         </div>
 
