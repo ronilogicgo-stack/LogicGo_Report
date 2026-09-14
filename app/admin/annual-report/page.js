@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import AnnualReportView from "@/components/AnnualReportView";
 
@@ -11,6 +12,7 @@ export default function AdminAnnualReportPage() {
   const [checked, setChecked] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
+  const [canManage, setCanManage] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -25,6 +27,7 @@ export default function AdminAnnualReportPage() {
       if (session.user.email === OWNER_EMAIL) {
         setHasAccess(true);
         setCanEdit(true);
+        setCanManage(true);
         setChecked(true);
         return;
       }
@@ -37,6 +40,7 @@ export default function AdminAnnualReportPage() {
 
       setHasAccess(!!grant);
       setCanEdit(grant?.access_level === "editor" || grant?.access_level === "agency_owner");
+      setCanManage(grant?.access_level === "agency_owner");
       setChecked(true);
     }
     check();
@@ -55,5 +59,19 @@ export default function AdminAnnualReportPage() {
     );
   }
 
-  return <AnnualReportView canEdit={canEdit} />;
+  return (
+    <div className="space-y-3">
+      {canManage && (
+        <div className="flex justify-end">
+          <Link
+            href="/annual-report/access"
+            className="text-sm text-amber-700 underline"
+          >
+            Manage Team Access →
+          </Link>
+        </div>
+      )}
+      <AnnualReportView canEdit={canEdit} />
+    </div>
+  );
 }
