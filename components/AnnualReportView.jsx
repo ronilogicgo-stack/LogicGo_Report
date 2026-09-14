@@ -159,8 +159,8 @@ export default function AnnualReportView({ canEdit }) {
       m.collection_gap = m.net_sales - m.collection_achievement;
     });
     grandTotal.collection_gap = grandTotal.net_sales - grandTotal.collection_achievement;
-    grandTotal.monthly_avg_sales = 0;
-    grandTotal.monthly_avg_collections = 0;
+    grandTotal.monthly_avg_sales = grandTotal.sales_achievement / 12;
+    grandTotal.monthly_avg_collections = grandTotal.collection_achievement / 12;
 
     return { months, grandTotal };
   }, [people]);
