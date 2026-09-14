@@ -50,18 +50,30 @@ export default function AnnualReportLayout({ children }) {
       let manageAllowed = owner;
 
       if (!owner) {
-        const { data: grant } = await supabase
-          .from("annual_report_access")
-          .select("access_level")
+        const { data: agencyRow } = await supabase
+          .from("agency_owners")
+          .select("user_id")
           .eq("user_id", session.user.id)
           .maybeSingle();
 
-        if (!grant) {
-          router.replace(admin ? "/admin" : "/dashboard");
-          return;
+        if (agencyRow) {
+          editAllowed = true;
+          manageAllowed = true;
+        } else {
+          const { data: grant } = await supabase
+            .from("module_access")
+            .select("access_level")
+            .eq("user_id", session.user.id)
+            .eq("module_key", "annual_report")
+            .maybeSingle();
+
+          if (!grant) {
+            router.replace(admin ? "/admin" : "/dashboard");
+            return;
+          }
+          editAllowed = grant.access_level === "editor";
+          manageAllowed = false;
         }
-        editAllowed = grant.access_level === "editor" || grant.access_level === "agency_owner";
-        manageAllowed = grant.access_level === "agency_owner";
       }
 
       const { data: settings } = await supabase
@@ -110,7 +122,7 @@ export default function AnnualReportLayout({ children }) {
               )}
             </div>
             {canManage && (
-              <Link href="/annual-report/access" className="text-sm text-amber-100 hover:text-white">
+              <Link href="/access" className="text-sm text-amber-100 hover:text-white">
                 Team Access
               </Link>
             )}

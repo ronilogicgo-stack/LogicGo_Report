@@ -32,15 +32,30 @@ export default function AdminAnnualReportPage() {
         return;
       }
 
-      const { data: grant } = await supabase
-        .from("annual_report_access")
-        .select("access_level")
+      const { data: agencyRow } = await supabase
+        .from("agency_owners")
+        .select("user_id")
         .eq("user_id", session.user.id)
         .maybeSingle();
 
+      if (agencyRow) {
+        setHasAccess(true);
+        setCanEdit(true);
+        setCanManage(true);
+        setChecked(true);
+        return;
+      }
+
+      const { data: grant } = await supabase
+        .from("module_access")
+        .select("access_level")
+        .eq("user_id", session.user.id)
+        .eq("module_key", "annual_report")
+        .maybeSingle();
+
       setHasAccess(!!grant);
-      setCanEdit(grant?.access_level === "editor" || grant?.access_level === "agency_owner");
-      setCanManage(grant?.access_level === "agency_owner");
+      setCanEdit(grant?.access_level === "editor");
+      setCanManage(false);
       setChecked(true);
     }
     check();
@@ -64,7 +79,7 @@ export default function AdminAnnualReportPage() {
       {canManage && (
         <div className="flex justify-end">
           <Link
-            href="/annual-report/access"
+            href="/access"
             className="text-sm text-amber-700 underline"
           >
             Manage Team Access →

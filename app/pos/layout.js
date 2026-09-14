@@ -50,20 +50,33 @@ export default function PosLayout({ children }) {
       let manageAllowed = owner;
 
       if (!owner) {
-        const { data: grant } = await supabase
-          .from("pos_access")
-          .select("access_level")
+        const { data: agencyRow } = await supabase
+          .from("agency_owners")
+          .select("user_id")
           .eq("user_id", session.user.id)
           .maybeSingle();
 
-        if (!grant) {
-          // Not the Owner and no explicit grant - even an Admin
-          // doesn't get automatic access to this module.
-          router.replace(admin ? "/admin" : "/dashboard");
-          return;
+        if (agencyRow) {
+          editAllowed = true;
+          manageAllowed = true;
+        } else {
+          const { data: grant } = await supabase
+            .from("module_access")
+            .select("access_level")
+            .eq("user_id", session.user.id)
+            .eq("module_key", "pos")
+            .maybeSingle();
+
+          if (!grant) {
+            // Not the Owner, not an Agency Owner, and no explicit grant
+            // for this module - even an Admin doesn't get automatic
+            // access.
+            router.replace(admin ? "/admin" : "/dashboard");
+            return;
+          }
+          editAllowed = grant.access_level === "editor";
+          manageAllowed = false;
         }
-        editAllowed = grant.access_level === "editor" || grant.access_level === "agency_owner";
-        manageAllowed = grant.access_level === "agency_owner";
       }
 
       const { data: settings } = await supabase
@@ -124,7 +137,7 @@ export default function PosLayout({ children }) {
               Sales
             </Link>
             {canManage && (
-              <Link href="/pos/access" className="text-sm text-emerald-100 hover:text-white">
+              <Link href="/access" className="text-sm text-emerald-100 hover:text-white">
                 Team Access
               </Link>
             )}
