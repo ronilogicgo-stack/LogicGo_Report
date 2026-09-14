@@ -148,7 +148,7 @@ export default function AdminLayout({ children }) {
           )}
           {canSeeAnnualReport && (
             <Link
-              href="/annual-report"
+              href="/admin/annual-report"
               className="text-sm text-indigo-100 hover:text-white"
             >
               Annual Report
