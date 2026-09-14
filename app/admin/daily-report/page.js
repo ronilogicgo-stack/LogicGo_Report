@@ -46,15 +46,15 @@ export default function DailyReportPage() {
   const load = useCallback(async () => {
     setLoading(true);
 
-    // Every approved (or paused) sales person always appears here, even
-    // with zero values if they haven't reported in this range - and any
-    // newly approved sales person shows up automatically the next time
-    // this loads, with no manual setup needed.
+    // Only active (approved) sales persons appear here - a paused
+    // person's row disappears from this report until they're resumed
+    // (their historical daily_entries data is untouched, just hidden
+    // from this view while paused).
     const { data: people } = await supabase
       .from("profiles")
       .select("id, full_name, location")
       .eq("is_sales_person", true)
-      .in("status", ["approved", "paused"])
+      .eq("status", "approved")
       .order("full_name");
 
     if (!people || people.length === 0) {
