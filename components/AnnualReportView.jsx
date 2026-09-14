@@ -9,6 +9,15 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+// One distinct color per month divider column, so scanning across the
+// (very wide) table makes it immediately obvious where one month ends
+// and the next begins.
+const MONTH_DIVIDER_COLORS = [
+  "#6366f1", "#f59e0b", "#10b981", "#ef4444",
+  "#3b82f6", "#ec4899", "#14b8a6", "#a855f7",
+  "#f97316", "#84cc16", "#0ea5e9", "#d946ef",
+];
+
 export default function AnnualReportView({ canEdit }) {
   const supabase = createClient();
   const [year, setYear] = useState(new Date().getFullYear());
@@ -419,10 +428,17 @@ export default function AnnualReportView({ canEdit }) {
                 <th className="border p-1.5 min-w-[100px]" rowSpan={3}>
                   Location
                 </th>
-                {MONTH_NAMES.map((name) => (
-                  <th key={name} className="border p-1.5" colSpan={8}>
-                    {name}
-                  </th>
+                {MONTH_NAMES.map((name, i) => (
+                  <Fragment key={name}>
+                    <th className="border p-1.5" colSpan={8}>
+                      {name}
+                    </th>
+                    <th
+                      className="p-0 w-1.5"
+                      style={{ backgroundColor: MONTH_DIVIDER_COLORS[i] }}
+                      rowSpan={3}
+                    ></th>
+                  </Fragment>
                 ))}
                 <th className="border p-1.5" colSpan={9}>
                   Grand Total FY-{year}
@@ -518,6 +534,7 @@ export default function AnnualReportView({ canEdit }) {
                         <td className="border p-1 text-right num">{fmt(s.collection_gap)}</td>
                         <td className="border p-1 text-right num">{fmt(s.sales_return)}</td>
                         <td className="border p-1 text-right num font-medium">{fmt(s.net_sales)}</td>
+                        <td className="p-0" style={{ backgroundColor: MONTH_DIVIDER_COLORS[mi] }}></td>
                       </Fragment>
                     );
                   })}
@@ -573,6 +590,7 @@ export default function AnnualReportView({ canEdit }) {
                     <td className="border p-1 text-right num">{fmt(s.collection_gap)}</td>
                     <td className="border p-1 text-right num">{fmt(s.sales_return)}</td>
                     <td className="border p-1 text-right num">{fmt(s.net_sales)}</td>
+                    <td className="p-0" style={{ backgroundColor: MONTH_DIVIDER_COLORS[mi] }}></td>
                   </Fragment>
                 ))}
                 <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.sales_target)}</td>
