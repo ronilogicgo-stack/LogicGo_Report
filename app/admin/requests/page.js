@@ -20,6 +20,7 @@ export default function TeamManagementPage() {
   const [editForm, setEditForm] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [savingAccess, setSavingAccess] = useState(null);
+  const [pendingModule, setPendingModule] = useState({});
 
   // Which roles are checked for each still-pending request, before approving.
   const [pendingRoles, setPendingRoles] = useState({});
@@ -534,30 +535,65 @@ export default function TeamManagementPage() {
                           )}
                         </div>
                         {isOwner && (
-                          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
-                            {KNOWN_MODULES.map((m) => {
-                              const current =
-                                (moduleAccessMap[p.id] || []).find((t) => t.module_key === m.key)
-                                  ?.access_level || "none";
-                              const key = `${p.id}:${m.key}`;
+                          <div className="flex flex-wrap items-center gap-1.5 mt-2 text-xs">
+                            {(moduleAccessMap[p.id] || []).map((t) => (
+                              <span
+                                key={t.id}
+                                className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded-full"
+                              >
+                                {moduleLabel(t.module_key)}:{" "}
+                                {t.access_level === "agency_owner"
+                                  ? "Agency Owner"
+                                  : t.access_level === "editor"
+                                  ? "Editor"
+                                  : "Viewer"}
+                                <button
+                                  onClick={() => setModuleLevel(p.id, t.module_key, "none")}
+                                  disabled={savingAccess === `${p.id}:${t.module_key}`}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            ))}
+                            {(() => {
+                              const granted = new Set((moduleAccessMap[p.id] || []).map((t) => t.module_key));
+                              const available = KNOWN_MODULES.filter((m) => !granted.has(m.key));
+                              if (available.length === 0) return null;
+                              const selectedModule = pendingModule[p.id] || available[0].key;
                               return (
-                                <label key={m.key} className="flex items-center gap-1">
-                                  <span className="text-gray-500">{m.label}:</span>
+                                <>
                                   <select
-                                    value={current}
-                                    disabled={savingAccess === key}
-                                    onChange={(e) => setModuleLevel(p.id, m.key, e.target.value)}
-                                    className="border rounded-full px-1.5 py-0.5"
+                                    value={selectedModule}
+                                    onChange={(e) =>
+                                      setPendingModule({ ...pendingModule, [p.id]: e.target.value })
+                                    }
+                                    className="border rounded-full px-2 py-0.5"
                                   >
-                                    {ACCESS_LEVELS.map((l) => (
+                                    {available.map((m) => (
+                                      <option key={m.key} value={m.key}>
+                                        {m.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <select
+                                    value=""
+                                    disabled={savingAccess === `${p.id}:${selectedModule}`}
+                                    onChange={(e) => {
+                                      if (e.target.value) setModuleLevel(p.id, selectedModule, e.target.value);
+                                    }}
+                                    className="border rounded-full px-2 py-0.5"
+                                  >
+                                    <option value="">Access...</option>
+                                    {ACCESS_LEVELS.filter((l) => l.value !== "none").map((l) => (
                                       <option key={l.value} value={l.value}>
                                         {l.label}
                                       </option>
                                     ))}
                                   </select>
-                                </label>
+                                </>
                               );
-                            })}
+                            })()}
                           </div>
                         )}
                       </div>

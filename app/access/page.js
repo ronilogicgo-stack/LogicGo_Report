@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabaseClient";
-import { KNOWN_MODULES, ACCESS_LEVELS } from "@/lib/modules";
+import { KNOWN_MODULES, moduleLabel, ACCESS_LEVELS } from "@/lib/modules";
 
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
@@ -13,7 +13,8 @@ export default function AccessControlPage() {
   const [team, setTeam] = useState([]);
   const [accessRows, setAccessRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(null);
+  const [savingAccess, setSavingAccess] = useState(null);
+  const [pendingModule, setPendingModule] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,7 +52,8 @@ export default function AccessControlPage() {
   }, [load]);
 
   async function setLevel(userId, moduleKey, level) {
-    setSaving(`${userId}:${moduleKey}`);
+    const key = `${userId}:${moduleKey}`;
+    setSavingAccess(key);
     if (level === "none") {
       await supabase.from("module_access").delete().eq("user_id", userId).eq("module_key", moduleKey);
     } else {
@@ -60,74 +62,98 @@ export default function AccessControlPage() {
         .upsert({ user_id: userId, module_key: moduleKey, access_level: level }, { onConflict: "user_id,module_key" });
       if (error) alert(`Could not save: ${error.message}`);
     }
-    setSaving(null);
+    setSavingAccess(null);
     load();
   }
 
   const accessByUser = {};
   for (const row of accessRows) {
-    (accessByUser[row.user_id] ||= {})[row.module_key] = row.access_level;
+    (accessByUser[row.user_id] ||= []).push(row);
   }
 
-  const visibleModules = KNOWN_MODULES.filter((m) => manageableModules.has(m.key));
+  const manageableList = KNOWN_MODULES.filter((m) => manageableModules.has(m.key));
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div>
         <h1 className="text-lg sm:text-xl font-bold">Module Access</h1>
         <p className="text-sm text-slate-500 mt-1">
-          For each module: Viewer (read-only), Editor (can add/change data), or Agency Owner
-          (Editor, plus can manage who else has access to that same module - only the account
-          owner can grant Agency Owner). You can only manage the module(s) you're an Agency Owner
-          of{isOwner ? " (you're the account owner, so that's everything)" : ""}.
+          Pick a module and an access level to grant it - it'll appear as a tag below, and the
+          ✕ removes it. Agency Owner is Editor-level access plus the ability to manage that same
+          module's access for others{isOwner ? "" : " - only the account owner can grant it"}.
+          You can only manage the module(s) you're an Agency Owner of
+          {isOwner ? " (you're the account owner, so that's everything)" : ""}.
         </p>
       </div>
 
       {loading ? (
         <p className="text-slate-500">Loading...</p>
-      ) : visibleModules.length === 0 ? (
+      ) : manageableList.length === 0 ? (
         <p className="text-slate-500">You aren't an Agency Owner of any module yet.</p>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="p-3">Team Member</th>
-                {visibleModules.map((m) => (
-                  <th key={m.key} className="p-3">
-                    {m.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {team.map((person) => (
-                <tr key={person.id} className="border-t">
-                  <td className="p-3 font-medium">{person.full_name}</td>
-                  {visibleModules.map((m) => {
-                    const current = accessByUser[person.id]?.[m.key] || "none";
-                    const key = `${person.id}:${m.key}`;
-                    return (
-                      <td key={m.key} className="p-2">
-                        <select
-                          value={current}
-                          disabled={saving === key}
-                          onChange={(e) => setLevel(person.id, m.key, e.target.value)}
-                          className="border rounded-lg px-2 py-1.5 text-sm"
-                        >
-                          {ACCESS_LEVELS.filter((l) => l.value !== "agency_owner" || isOwner).map((l) => (
+        <div className="space-y-3">
+          {team.map((person) => {
+            const tags = (accessByUser[person.id] || []).filter((t) => manageableModules.has(t.module_key));
+            const granted = new Set(tags.map((t) => t.module_key));
+            const available = manageableList.filter((m) => !granted.has(m.key));
+            const selectedModule = pendingModule[person.id] || available[0]?.key;
+
+            return (
+              <div key={person.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                <p className="font-medium">{person.full_name}</p>
+                <div className="flex flex-wrap items-center gap-1.5 mt-2 text-xs">
+                  {tags.map((t) => (
+                    <span
+                      key={t.id}
+                      className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded-full"
+                    >
+                      {moduleLabel(t.module_key)}:{" "}
+                      {t.access_level === "agency_owner" ? "Agency Owner" : t.access_level === "editor" ? "Editor" : "Viewer"}
+                      <button
+                        onClick={() => setLevel(person.id, t.module_key, "none")}
+                        disabled={savingAccess === `${person.id}:${t.module_key}`}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  {available.length > 0 && (
+                    <>
+                      <select
+                        value={selectedModule}
+                        onChange={(e) => setPendingModule({ ...pendingModule, [person.id]: e.target.value })}
+                        className="border rounded-full px-2 py-0.5"
+                      >
+                        {available.map((m) => (
+                          <option key={m.key} value={m.key}>
+                            {m.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value=""
+                        disabled={savingAccess === `${person.id}:${selectedModule}`}
+                        onChange={(e) => {
+                          if (e.target.value) setLevel(person.id, selectedModule, e.target.value);
+                        }}
+                        className="border rounded-full px-2 py-0.5"
+                      >
+                        <option value="">Access...</option>
+                        {ACCESS_LEVELS.filter((l) => l.value !== "none" && (l.value !== "agency_owner" || isOwner)).map(
+                          (l) => (
                             <option key={l.value} value={l.value}>
                               {l.label}
                             </option>
-                          ))}
-                        </select>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                          )
+                        )}
+                      </select>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
