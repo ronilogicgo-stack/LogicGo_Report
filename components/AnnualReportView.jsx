@@ -434,8 +434,8 @@ export default function AnnualReportView({ canEdit }) {
                       {name}
                     </th>
                     <th
-                      className="p-0 w-1.5"
-                      style={{ backgroundColor: MONTH_DIVIDER_COLORS[i] }}
+                      className="p-0"
+                      style={{ backgroundColor: MONTH_DIVIDER_COLORS[i], width: "10px", minWidth: "10px" }}
                       rowSpan={3}
                     ></th>
                   </Fragment>
@@ -534,7 +534,7 @@ export default function AnnualReportView({ canEdit }) {
                         <td className="border p-1 text-right num">{fmt(s.collection_gap)}</td>
                         <td className="border p-1 text-right num">{fmt(s.sales_return)}</td>
                         <td className="border p-1 text-right num font-medium">{fmt(s.net_sales)}</td>
-                        <td className="p-0" style={{ backgroundColor: MONTH_DIVIDER_COLORS[mi] }}></td>
+                        <td className="p-0" style={{ backgroundColor: MONTH_DIVIDER_COLORS[mi], width: "10px", minWidth: "10px" }}></td>
                       </Fragment>
                     );
                   })}
@@ -590,7 +590,7 @@ export default function AnnualReportView({ canEdit }) {
                     <td className="border p-1 text-right num">{fmt(s.collection_gap)}</td>
                     <td className="border p-1 text-right num">{fmt(s.sales_return)}</td>
                     <td className="border p-1 text-right num">{fmt(s.net_sales)}</td>
-                    <td className="p-0" style={{ backgroundColor: MONTH_DIVIDER_COLORS[mi] }}></td>
+                    <td className="p-0" style={{ backgroundColor: MONTH_DIVIDER_COLORS[mi], width: "10px", minWidth: "10px" }}></td>
                   </Fragment>
                 ))}
                 <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.sales_target)}</td>
