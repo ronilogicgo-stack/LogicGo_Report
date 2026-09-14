@@ -22,41 +22,59 @@ import ExportButtons from "@/components/ExportButtons";
 
 const PRESETS = ["Daily", "Weekly", "Monthly", "Yearly", "Custom"];
 
-function rangeForPreset(preset, customFrom, customTo) {
-  const today = new Date();
-  let from, to;
+function daysInMonth(yearMonth) {
+  const [y, m] = yearMonth.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+function rangeForPreset(preset, opts) {
+  const { selectedDate, selectedMonth, selectedWeek, selectedYear, customFrom, customTo } = opts;
 
   if (preset === "Daily") {
-    from = to = dateKey(today);
-  } else if (preset === "Weekly") {
-    const day = today.getDay(); // 0 = Sunday
-    const start = new Date(today);
-    start.setDate(today.getDate() - day);
-    from = dateKey(start);
-    to = dateKey(today);
-  } else if (preset === "Monthly") {
-    from = dateKey(new Date(today.getFullYear(), today.getMonth(), 1));
-    to = dateKey(today);
-  } else if (preset === "Yearly") {
-    from = dateKey(new Date(today.getFullYear(), 0, 1));
-    to = dateKey(today);
-  } else {
-    from = customFrom || dateKey(today);
-    to = customTo || dateKey(today);
+    return { from: selectedDate, to: selectedDate };
   }
-  return { from, to };
+  if (preset === "Weekly") {
+    const totalDays = daysInMonth(selectedMonth);
+    const weekStartDay = (selectedWeek - 1) * 7 + 1;
+    const weekEndDay = Math.min(weekStartDay + 6, totalDays);
+    return {
+      from: `${selectedMonth}-${String(weekStartDay).padStart(2, "0")}`,
+      to: `${selectedMonth}-${String(weekEndDay).padStart(2, "0")}`,
+    };
+  }
+  if (preset === "Monthly") {
+    return {
+      from: `${selectedMonth}-01`,
+      to: `${selectedMonth}-${String(daysInMonth(selectedMonth)).padStart(2, "0")}`,
+    };
+  }
+  if (preset === "Yearly") {
+    return { from: `${selectedYear}-01-01`, to: `${selectedYear}-12-31` };
+  }
+  return { from: customFrom || dateKey(), to: customTo || dateKey() };
 }
 
 export default function AnalyticsPage() {
   const supabase = createClient();
   const [preset, setPreset] = useState("Monthly");
+  const [selectedDate, setSelectedDate] = useState(dateKey());
+  const [selectedMonth, setSelectedMonth] = useState(dateKey().slice(0, 7)); // "YYYY-MM"
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [customFrom, setCustomFrom] = useState(dateKey());
   const [customTo, setCustomTo] = useState(dateKey());
   const [people, setPeople] = useState([]);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const { from, to } = rangeForPreset(preset, customFrom, customTo);
+  const { from, to } = rangeForPreset(preset, {
+    selectedDate,
+    selectedMonth,
+    selectedWeek,
+    selectedYear,
+    customFrom,
+    customTo,
+  });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -165,6 +183,87 @@ export default function AnalyticsPage() {
           <ExportButtons onDownloadCSV={exportCSV} />
         </div>
       </div>
+
+      {preset === "Daily" && (
+        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <label className="text-sm text-gray-500">
+            Date
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="ml-2 border rounded-lg px-2 py-1"
+            />
+          </label>
+        </div>
+      )}
+
+      {preset === "Weekly" && (
+        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <label className="text-sm text-gray-500">
+            Month
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(e.target.value);
+                setSelectedWeek(1);
+              }}
+              className="ml-2 border rounded-lg px-2 py-1"
+            />
+          </label>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-gray-500 mr-1">Week</span>
+            {Array.from(
+              { length: Math.ceil(daysInMonth(selectedMonth) / 7) },
+              (_, i) => i + 1
+            ).map((w) => (
+              <button
+                key={w}
+                onClick={() => setSelectedWeek(w)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                  selectedWeek === w ? "bg-black text-white" : "bg-white border text-gray-600"
+                }`}
+              >
+                {w === 1 ? "1st" : w === 2 ? "2nd" : w === 3 ? "3rd" : `${w}th`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {preset === "Monthly" && (
+        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <label className="text-sm text-gray-500">
+            Month
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="ml-2 border rounded-lg px-2 py-1"
+            />
+          </label>
+        </div>
+      )}
+
+      {preset === "Yearly" && (
+        <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <label className="text-sm text-gray-500">
+            Year
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="ml-2 border rounded-lg px-2 py-1"
+            >
+              {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 4 + i).map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       {preset === "Custom" && (
         <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
