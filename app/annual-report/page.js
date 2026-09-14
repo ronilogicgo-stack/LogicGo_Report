@@ -95,6 +95,8 @@ export default function AnnualReportPage() {
           }
         );
         grandTotal.collection_gap = grandTotal.net_sales - grandTotal.collection_achievement;
+        grandTotal.monthly_avg_sales = grandTotal.sales_achievement / 12;
+        grandTotal.monthly_avg_collections = grandTotal.collection_achievement / 12;
         return { ...person, grandTotal };
       })
       .sort(
@@ -130,7 +132,7 @@ export default function AnnualReportPage() {
         views: [{ state: "frozen", xSplit: 4, ySplit: 6 }],
       });
 
-      const TOTAL_COLS = 3 + 12 * 8 + 7 + 1; // 107, matches the reference template
+      const TOTAL_COLS = 3 + 12 * 8 + 9 + 1; // 109: 3 id cols + 12 months*8 + grand total (9) + remarks
 
       ws.mergeCells(1, 1, 1, 4);
       ws.getCell(1, 1).value = "LogicGo";
@@ -184,9 +186,9 @@ export default function AnnualReportPage() {
         col += 7;
       }
 
-      // Grand Total FY block (7 cols): Sales T/A, Collections T/A, Gap, Return, Net
+      // Grand Total FY block (9 cols): Sales T/A, Collections T/A, Gap, Return, Net, Monthly Avg Sales, Monthly Avg Collections
       const gtCol = col;
-      ws.mergeCells(4, gtCol, 4, gtCol + 6);
+      ws.mergeCells(4, gtCol, 4, gtCol + 8);
       ws.getCell(4, gtCol).value = `Grand Total FY-${year}`;
       ws.mergeCells(5, gtCol, 5, gtCol + 1);
       ws.getCell(5, gtCol).value = "Sales";
@@ -202,8 +204,16 @@ export default function AnnualReportPage() {
       ws.getCell(5, gtCol + 5).value = "Sales Return";
       ws.mergeCells(5, gtCol + 6, 6, gtCol + 6);
       ws.getCell(5, gtCol + 6).value = "Net Sales";
+      ws.mergeCells(5, gtCol + 7, 6, gtCol + 7);
+      const avgSalesCell = ws.getCell(5, gtCol + 7);
+      avgSalesCell.value = "Monthly Avg. Sales";
+      avgSalesCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF66FFFF" } };
+      ws.mergeCells(5, gtCol + 8, 6, gtCol + 8);
+      const avgCollectionsCell = ws.getCell(5, gtCol + 8);
+      avgCollectionsCell.value = "Monthly Avg. Collections";
+      avgCollectionsCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6CCFF" } };
 
-      const remarksCol = gtCol + 7;
+      const remarksCol = gtCol + 9;
       ws.mergeCells(4, remarksCol, 6, remarksCol);
       ws.getCell(4, remarksCol).value = "Remaks";
 
@@ -248,7 +258,9 @@ export default function AnnualReportPage() {
           person.grandTotal.collection_achievement,
           person.grandTotal.collection_gap,
           person.grandTotal.sales_return,
-          person.grandTotal.net_sales
+          person.grandTotal.net_sales,
+          person.grandTotal.monthly_avg_sales,
+          person.grandTotal.monthly_avg_collections
         );
         row.push(remarksMap[person.user_id] || "");
         ws.getRow(rowNum).values = row;
@@ -327,7 +339,7 @@ export default function AnnualReportPage() {
                     {name}
                   </th>
                 ))}
-                <th className="border p-1.5" colSpan={7}>
+                <th className="border p-1.5" colSpan={9}>
                   Grand Total FY-{year}
                 </th>
                 <th className="border p-1.5 min-w-[160px]" rowSpan={3}>
@@ -371,6 +383,12 @@ export default function AnnualReportPage() {
                 </th>
                 <th className="border p-1 font-normal" rowSpan={2}>
                   Net Sales
+                </th>
+                <th className="border p-1 font-normal bg-cyan-100" rowSpan={2}>
+                  Monthly Avg. Sales
+                </th>
+                <th className="border p-1 font-normal bg-purple-100" rowSpan={2}>
+                  Monthly Avg. Collections
                 </th>
               </tr>
               <tr>
@@ -434,6 +452,12 @@ export default function AnnualReportPage() {
                   <td className="border p-1 text-right num bg-orange-50">{fmt(person.grandTotal.sales_return)}</td>
                   <td className="border p-1 text-right num bg-orange-50 font-semibold">
                     {fmt(person.grandTotal.net_sales)}
+                  </td>
+                  <td className="border p-1 text-right num bg-cyan-50">
+                    {fmt(person.grandTotal.monthly_avg_sales)}
+                  </td>
+                  <td className="border p-1 text-right num bg-purple-50">
+                    {fmt(person.grandTotal.monthly_avg_collections)}
                   </td>
                   <td className="border p-1">
                     {canEdit ? (
