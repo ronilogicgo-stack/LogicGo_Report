@@ -26,6 +26,7 @@ import {
 } from "@/lib/calculations";
 import { downloadCSV } from "@/lib/csv";
 import { fetchAllRows } from "@/lib/fetchAll";
+import { isActiveOnDate, wasActiveDuringRange } from "@/lib/statusHistory";
 import ExportButtons from "@/components/ExportButtons";
 
 export default function DailyReportPage() {
@@ -46,16 +47,32 @@ export default function DailyReportPage() {
   const load = useCallback(async () => {
     setLoading(true);
 
-    // Only active (approved) sales persons appear here - a paused
-    // person's row disappears from this report until they're resumed
-    // (their historical daily_entries data is untouched, just hidden
-    // from this view while paused).
-    const { data: people } = await supabase
-      .from("profiles")
-      .select("id, full_name, location")
-      .eq("is_sales_person", true)
-      .eq("status", "approved")
-      .order("full_name");
+    // Fetch every approved-or-paused sales person, then use their
+    // pause/resume history to work out who was actually active during
+    // the date/range being viewed - a currently-paused person still
+    // shows up for dates before their pause, and a currently-active
+    // person who was paused earlier still shows correctly for that
+    // earlier period too.
+    const [{ data: allPeople }, { data: historyRows }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, location")
+        .eq("is_sales_person", true)
+        .in("status", ["approved", "paused"])
+        .order("full_name"),
+      supabase.from("profile_status_history").select("user_id, status, effective_date"),
+    ]);
+
+    const historyByUser = {};
+    for (const h of historyRows || []) {
+      (historyByUser[h.user_id] ||= []).push(h);
+    }
+
+    const people = (allPeople || []).filter((p) =>
+      mode === "single"
+        ? isActiveOnDate(historyByUser[p.id], date)
+        : wasActiveDuringRange(historyByUser[p.id], from, to)
+    );
 
     if (!people || people.length === 0) {
       setRows([]);
