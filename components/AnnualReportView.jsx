@@ -103,6 +103,59 @@ export default function AnnualReportView({ canEdit }) {
       );
   }, [rawData]);
 
+  // The bottom "Grand Total" row - sums every column across ALL sales
+  // persons (per month, and the yearly Grand Total block). Monthly Avg.
+  // Sales/Collections are left at 0 here, matching the reference sheet -
+  // averaging averages across people isn't meaningful.
+  const companyTotal = useMemo(() => {
+    const blankMonth = () => ({
+      opening_dues: 0,
+      sales_target: 0,
+      sales_achievement: 0,
+      collection_target: 0,
+      collection_achievement: 0,
+      sales_return: 0,
+      net_sales: 0,
+    });
+    const months = Array.from({ length: 12 }, blankMonth);
+    const grandTotal = {
+      sales_target: 0,
+      sales_achievement: 0,
+      collection_target: 0,
+      collection_achievement: 0,
+      sales_return: 0,
+      net_sales: 0,
+    };
+
+    for (const person of people) {
+      person.months.forEach((m, i) => {
+        if (!m) return;
+        months[i].opening_dues += m.opening_dues;
+        months[i].sales_target += m.sales_target;
+        months[i].sales_achievement += m.sales_achievement;
+        months[i].collection_target += m.collection_target;
+        months[i].collection_achievement += m.collection_achievement;
+        months[i].sales_return += m.sales_return;
+        months[i].net_sales += m.net_sales;
+      });
+      grandTotal.sales_target += person.grandTotal.sales_target;
+      grandTotal.sales_achievement += person.grandTotal.sales_achievement;
+      grandTotal.collection_target += person.grandTotal.collection_target;
+      grandTotal.collection_achievement += person.grandTotal.collection_achievement;
+      grandTotal.sales_return += person.grandTotal.sales_return;
+      grandTotal.net_sales += person.grandTotal.net_sales;
+    }
+
+    months.forEach((m) => {
+      m.collection_gap = m.net_sales - m.collection_achievement;
+    });
+    grandTotal.collection_gap = grandTotal.net_sales - grandTotal.collection_achievement;
+    grandTotal.monthly_avg_sales = 0;
+    grandTotal.monthly_avg_collections = 0;
+
+    return { months, grandTotal };
+  }, [people]);
+
   async function saveRemark(userId, value) {
     setSavingRemarksFor(userId);
     const {
@@ -264,6 +317,40 @@ export default function AnnualReportView({ canEdit }) {
         ws.getRow(rowNum).values = row;
         rowNum++;
       });
+
+      // --- Bottom "Grand Total" row: sums every column across all people ---
+      const totalRow = ["", "Grand Total", ""];
+      companyTotal.months.forEach((s) => {
+        totalRow.push(
+          s.opening_dues,
+          s.sales_target,
+          s.sales_achievement,
+          s.collection_target,
+          s.collection_achievement,
+          s.collection_gap,
+          s.sales_return,
+          s.net_sales
+        );
+      });
+      totalRow.push(
+        companyTotal.grandTotal.sales_target,
+        companyTotal.grandTotal.sales_achievement,
+        companyTotal.grandTotal.collection_target,
+        companyTotal.grandTotal.collection_achievement,
+        companyTotal.grandTotal.collection_gap,
+        companyTotal.grandTotal.sales_return,
+        companyTotal.grandTotal.net_sales,
+        companyTotal.grandTotal.monthly_avg_sales,
+        companyTotal.grandTotal.monthly_avg_collections
+      );
+      totalRow.push("");
+      const totalRowObj = ws.getRow(rowNum);
+      totalRowObj.values = totalRow;
+      for (let c = 1; c <= TOTAL_COLS; c++) {
+        const cell = totalRowObj.getCell(c);
+        cell.font = { bold: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDE9D9" } };
+      }
 
       ws.getColumn(1).width = 5;
       ws.getColumn(2).width = 22;
@@ -472,6 +559,35 @@ export default function AnnualReportView({ canEdit }) {
                   </td>
                 </tr>
               ))}
+              <tr className="border-t-2 border-orange-300 bg-orange-100 font-semibold">
+                <td className="sticky left-0 bg-orange-100 border p-1.5 z-10"></td>
+                <td className="sticky left-8 bg-orange-100 border p-1.5 z-10">Grand Total</td>
+                <td className="border p-1.5"></td>
+                {companyTotal.months.map((s, mi) => (
+                  <Fragment key={mi}>
+                    <td className="border p-1 text-right num">{fmt(s.opening_dues)}</td>
+                    <td className="border p-1 text-right num">{fmt(s.sales_target)}</td>
+                    <td className="border p-1 text-right num">{fmt(s.sales_achievement)}</td>
+                    <td className="border p-1 text-right num">{fmt(s.collection_target)}</td>
+                    <td className="border p-1 text-right num">{fmt(s.collection_achievement)}</td>
+                    <td className="border p-1 text-right num">{fmt(s.collection_gap)}</td>
+                    <td className="border p-1 text-right num">{fmt(s.sales_return)}</td>
+                    <td className="border p-1 text-right num">{fmt(s.net_sales)}</td>
+                  </Fragment>
+                ))}
+                <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.sales_target)}</td>
+                <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.sales_achievement)}</td>
+                <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.collection_target)}</td>
+                <td className="border p-1 text-right num">
+                  {fmt(companyTotal.grandTotal.collection_achievement)}
+                </td>
+                <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.collection_gap)}</td>
+                <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.sales_return)}</td>
+                <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.net_sales)}</td>
+                <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.monthly_avg_sales)}</td>
+                <td className="border p-1 text-right num">{fmt(companyTotal.grandTotal.monthly_avg_collections)}</td>
+                <td className="border p-1"></td>
+              </tr>
             </tbody>
           </table>
         </div>
