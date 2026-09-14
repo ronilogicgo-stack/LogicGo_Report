@@ -40,12 +40,12 @@ export default function AccessLayout({ children }) {
       let allowed = owner;
 
       if (!owner) {
-        const { data: agencyRow } = await supabase
-          .from("agency_owners")
-          .select("user_id")
+        const { data: agencyRows } = await supabase
+          .from("module_access")
+          .select("module_key")
           .eq("user_id", session.user.id)
-          .maybeSingle();
-        allowed = !!agencyRow;
+          .eq("access_level", "agency_owner");
+        allowed = !!agencyRows && agencyRows.length > 0;
       }
 
       if (!allowed) {

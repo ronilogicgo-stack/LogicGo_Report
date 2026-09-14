@@ -32,20 +32,6 @@ export default function AdminAnnualReportPage() {
         return;
       }
 
-      const { data: agencyRow } = await supabase
-        .from("agency_owners")
-        .select("user_id")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-      if (agencyRow) {
-        setHasAccess(true);
-        setCanEdit(true);
-        setCanManage(true);
-        setChecked(true);
-        return;
-      }
-
       const { data: grant } = await supabase
         .from("module_access")
         .select("access_level")
@@ -54,8 +40,8 @@ export default function AdminAnnualReportPage() {
         .maybeSingle();
 
       setHasAccess(!!grant);
-      setCanEdit(grant?.access_level === "editor");
-      setCanManage(false);
+      setCanEdit(grant?.access_level === "editor" || grant?.access_level === "agency_owner");
+      setCanManage(grant?.access_level === "agency_owner");
       setChecked(true);
     }
     check();

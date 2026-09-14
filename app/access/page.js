@@ -2,31 +2,28 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabaseClient";
-import { KNOWN_MODULES, moduleLabel } from "@/lib/modules";
+import { KNOWN_MODULES, ACCESS_LEVELS } from "@/lib/modules";
 
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
 export default function AccessControlPage() {
   const supabase = createClient();
   const [isOwner, setIsOwner] = useState(false);
+  const [manageableModules, setManageableModules] = useState(new Set());
   const [team, setTeam] = useState([]);
   const [accessRows, setAccessRows] = useState([]);
-  const [agencyOwnerIds, setAgencyOwnerIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
-
-  const [addingFor, setAddingFor] = useState(null);
-  const [newModule, setNewModule] = useState(KNOWN_MODULES[0]?.key || "");
-  const [newLevel, setNewLevel] = useState("viewer");
 
   const load = useCallback(async () => {
     setLoading(true);
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    setIsOwner(user?.email === OWNER_EMAIL);
+    const owner = user?.email === OWNER_EMAIL;
+    setIsOwner(owner);
 
-    const [{ data: teamData }, { data: access }, { data: agency }] = await Promise.all([
+    const [{ data: teamData }, { data: access }] = await Promise.all([
       supabase
         .from("profiles")
         .select("id, full_name, email")
@@ -34,12 +31,18 @@ export default function AccessControlPage() {
         .or("is_sales_person.eq.true,is_admin.eq.true")
         .order("full_name"),
       supabase.from("module_access").select("*"),
-      supabase.from("agency_owners").select("user_id"),
     ]);
 
     setTeam(teamData || []);
     setAccessRows(access || []);
-    setAgencyOwnerIds(new Set((agency || []).map((a) => a.user_id)));
+
+    if (owner) {
+      setManageableModules(new Set(KNOWN_MODULES.map((m) => m.key)));
+    } else {
+      const mine = (access || []).filter((r) => r.user_id === user?.id && r.access_level === "agency_owner");
+      setManageableModules(new Set(mine.map((r) => r.module_key)));
+    }
+
     setLoading(false);
   }, [supabase]);
 
@@ -47,31 +50,15 @@ export default function AccessControlPage() {
     load();
   }, [load]);
 
-  async function addTag(userId) {
-    if (!newModule) return;
-    setSaving(userId);
-    const { error } = await supabase
-      .from("module_access")
-      .upsert({ user_id: userId, module_key: newModule, access_level: newLevel }, { onConflict: "user_id,module_key" });
-    if (error) alert(`Could not save: ${error.message}`);
-    setAddingFor(null);
-    setSaving(null);
-    load();
-  }
-
-  async function removeTag(rowId, userId) {
-    setSaving(userId);
-    await supabase.from("module_access").delete().eq("id", rowId);
-    setSaving(null);
-    load();
-  }
-
-  async function toggleAgencyOwner(userId, makeOwner) {
-    setSaving(userId);
-    if (makeOwner) {
-      await supabase.from("agency_owners").insert({ user_id: userId });
+  async function setLevel(userId, moduleKey, level) {
+    setSaving(`${userId}:${moduleKey}`);
+    if (level === "none") {
+      await supabase.from("module_access").delete().eq("user_id", userId).eq("module_key", moduleKey);
     } else {
-      await supabase.from("agency_owners").delete().eq("user_id", userId);
+      const { error } = await supabase
+        .from("module_access")
+        .upsert({ user_id: userId, module_key: moduleKey, access_level: level }, { onConflict: "user_id,module_key" });
+      if (error) alert(`Could not save: ${error.message}`);
     }
     setSaving(null);
     load();
@@ -79,129 +66,68 @@ export default function AccessControlPage() {
 
   const accessByUser = {};
   for (const row of accessRows) {
-    (accessByUser[row.user_id] ||= []).push(row);
+    (accessByUser[row.user_id] ||= {})[row.module_key] = row.access_level;
   }
 
+  const visibleModules = KNOWN_MODULES.filter((m) => manageableModules.has(m.key));
+
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-lg sm:text-xl font-bold">Module Access</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Tag a person with a module (e.g. "POS") to grant them access - Viewer is read-only,
-          Editor can add/change data. An <span className="font-medium text-violet-700">Agency Owner</span> automatically
-          gets full access to EVERY module and can manage this list themselves - only{" "}
-          {isOwner ? "you" : "the account owner"} can make someone an Agency Owner.
+          For each module: Viewer (read-only), Editor (can add/change data), or Agency Owner
+          (Editor, plus can manage who else has access to that same module - only the account
+          owner can grant Agency Owner). You can only manage the module(s) you're an Agency Owner
+          of{isOwner ? " (you're the account owner, so that's everything)" : ""}.
         </p>
       </div>
 
       {loading ? (
         <p className="text-slate-500">Loading...</p>
+      ) : visibleModules.length === 0 ? (
+        <p className="text-slate-500">You aren't an Agency Owner of any module yet.</p>
       ) : (
-        <div className="space-y-3">
-          {team.map((person) => {
-            const tags = accessByUser[person.id] || [];
-            const isAgencyOwner = agencyOwnerIds.has(person.id);
-            return (
-              <div key={person.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <p className="font-medium">{person.full_name}</p>
-                  {isOwner && (
-                    <label className="flex items-center gap-1.5 text-xs text-violet-700">
-                      <input
-                        type="checkbox"
-                        checked={isAgencyOwner}
-                        disabled={saving === person.id}
-                        onChange={(e) => toggleAgencyOwner(person.id, e.target.checked)}
-                      />
-                      Agency Owner (all modules)
-                    </label>
-                  )}
-                  {!isOwner && isAgencyOwner && (
-                    <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
-                      Agency Owner
-                    </span>
-                  )}
-                </div>
-
-                {isAgencyOwner ? (
-                  <p className="text-xs text-slate-400 mt-2">
-                    Already has full access to every module as an Agency Owner - no individual tags needed.
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    {tags.length === 0 && addingFor !== person.id && (
-                      <span className="text-xs text-slate-400">No module access yet</span>
-                    )}
-                    {tags.map((t) => (
-                      <span
-                        key={t.id}
-                        className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-full"
-                      >
-                        {moduleLabel(t.module_key)}
-                        <span className="text-slate-400">({t.access_level})</span>
-                        <button
-                          onClick={() => removeTag(t.id, person.id)}
-                          disabled={saving === person.id}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    ))}
-
-                    {addingFor === person.id ? (
-                      <div className="flex items-center gap-1.5">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-100 text-left">
+              <tr>
+                <th className="p-3">Team Member</th>
+                {visibleModules.map((m) => (
+                  <th key={m.key} className="p-3">
+                    {m.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {team.map((person) => (
+                <tr key={person.id} className="border-t">
+                  <td className="p-3 font-medium">{person.full_name}</td>
+                  {visibleModules.map((m) => {
+                    const current = accessByUser[person.id]?.[m.key] || "none";
+                    const key = `${person.id}:${m.key}`;
+                    return (
+                      <td key={m.key} className="p-2">
                         <select
-                          value={newModule}
-                          onChange={(e) => setNewModule(e.target.value)}
-                          className="text-xs border rounded-full px-2 py-1"
+                          value={current}
+                          disabled={saving === key}
+                          onChange={(e) => setLevel(person.id, m.key, e.target.value)}
+                          className="border rounded-lg px-2 py-1.5 text-sm"
                         >
-                          {KNOWN_MODULES.filter((m) => !tags.some((t) => t.module_key === m.key)).map((m) => (
-                            <option key={m.key} value={m.key}>
-                              {m.label}
+                          {ACCESS_LEVELS.filter((l) => l.value !== "agency_owner" || isOwner).map((l) => (
+                            <option key={l.value} value={l.value}>
+                              {l.label}
                             </option>
                           ))}
                         </select>
-                        <select
-                          value={newLevel}
-                          onChange={(e) => setNewLevel(e.target.value)}
-                          className="text-xs border rounded-full px-2 py-1"
-                        >
-                          <option value="viewer">Viewer</option>
-                          <option value="editor">Editor</option>
-                        </select>
-                        <button
-                          onClick={() => addTag(person.id)}
-                          disabled={saving === person.id}
-                          className="text-xs bg-slate-900 text-white px-2.5 py-1 rounded-full"
-                        >
-                          Add
-                        </button>
-                        <button
-                          onClick={() => setAddingFor(null)}
-                          className="text-xs text-slate-400"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setAddingFor(person.id);
-                          const available = KNOWN_MODULES.find((m) => !tags.some((t) => t.module_key === m.key));
-                          setNewModule(available?.key || "");
-                          setNewLevel("viewer");
-                        }}
-                        className="text-xs text-blue-600 underline"
-                      >
-                        + Add module
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

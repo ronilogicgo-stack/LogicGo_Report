@@ -50,33 +50,21 @@ export default function PosLayout({ children }) {
       let manageAllowed = owner;
 
       if (!owner) {
-        const { data: agencyRow } = await supabase
-          .from("agency_owners")
-          .select("user_id")
+        const { data: grant } = await supabase
+          .from("module_access")
+          .select("access_level")
           .eq("user_id", session.user.id)
+          .eq("module_key", "pos")
           .maybeSingle();
 
-        if (agencyRow) {
-          editAllowed = true;
-          manageAllowed = true;
-        } else {
-          const { data: grant } = await supabase
-            .from("module_access")
-            .select("access_level")
-            .eq("user_id", session.user.id)
-            .eq("module_key", "pos")
-            .maybeSingle();
-
-          if (!grant) {
-            // Not the Owner, not an Agency Owner, and no explicit grant
-            // for this module - even an Admin doesn't get automatic
-            // access.
-            router.replace(admin ? "/admin" : "/dashboard");
-            return;
-          }
-          editAllowed = grant.access_level === "editor";
-          manageAllowed = false;
+        if (!grant) {
+          // Not the Owner and no explicit grant - even an Admin
+          // doesn't get automatic access to this module.
+          router.replace(admin ? "/admin" : "/dashboard");
+          return;
         }
+        editAllowed = grant.access_level === "editor" || grant.access_level === "agency_owner";
+        manageAllowed = grant.access_level === "agency_owner";
       }
 
       const { data: settings } = await supabase
