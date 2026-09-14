@@ -3,8 +3,9 @@
 import { Fragment, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
-import { summarizeFromTotals, fmt, monthKey } from "@/lib/calculations";
+import { summarizeFromTotals, fmt, monthKey, daysInMonthFor } from "@/lib/calculations";
 import { downloadCSV } from "@/lib/csv";
+import { wasActiveDuringRange } from "@/lib/statusHistory";
 import ExportButtons from "@/components/ExportButtons";
 
 export default function AdminDashboard() {
@@ -19,14 +20,37 @@ export default function AdminDashboard() {
   const load = useCallback(async () => {
     setLoading(true);
 
-    const { data: people } = await supabase
+    const { data: allPeople } = await supabase
       .from("profiles")
       .select("id, full_name, location, status")
       .eq("is_sales_person", true)
       .in("status", ["approved", "paused"])
       .order("full_name");
 
-    if (!people || people.length === 0) {
+    if (!allPeople || allPeople.length === 0) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+
+    // A person only disappears from this report for months they were
+    // paused THE WHOLE TIME - paused mid-month (or resumed mid-month)
+    // still shows, with correct totals for the days they were active.
+    const { data: historyRows } = await supabase
+      .from("profile_status_history")
+      .select("user_id, status, effective_date")
+      .in(
+        "user_id",
+        allPeople.map((p) => p.id)
+      );
+    const historyByUser = {};
+    for (const h of historyRows || []) {
+      (historyByUser[h.user_id] ||= []).push(h);
+    }
+    const monthEnd = `${month.slice(0, 8)}${String(daysInMonthFor(month)).padStart(2, "0")}`;
+    const people = allPeople.filter((p) => wasActiveDuringRange(historyByUser[p.id], month, monthEnd));
+
+    if (people.length === 0) {
       setRows([]);
       setLoading(false);
       return;
