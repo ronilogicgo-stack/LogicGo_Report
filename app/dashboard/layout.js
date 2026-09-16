@@ -64,16 +64,18 @@ export default function DashboardLayout({ children }) {
       setHasFollowupAccess(!!grants && grants.length > 0);
 
       const { data: posGrant } = await supabase
-        .from("pos_access")
+        .from("module_access")
         .select("id")
         .eq("user_id", session.user.id)
+        .eq("module_key", "pos")
         .maybeSingle();
       setHasPosAccess(!!posGrant);
 
       const { data: reportGrant } = await supabase
-        .from("annual_report_access")
+        .from("module_access")
         .select("id")
         .eq("user_id", session.user.id)
+        .eq("module_key", "annual_report")
         .maybeSingle();
       setHasAnnualReportAccess(!!reportGrant);
 

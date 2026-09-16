@@ -55,11 +55,17 @@ export default function AdminLayout({ children }) {
         setCanSeeAnnualReport(true);
       } else {
         const [{ data: posGrant }, { data: reportGrant }] = await Promise.all([
-          supabase.from("pos_access").select("id").eq("user_id", session.user.id).maybeSingle(),
           supabase
-            .from("annual_report_access")
+            .from("module_access")
             .select("id")
             .eq("user_id", session.user.id)
+            .eq("module_key", "pos")
+            .maybeSingle(),
+          supabase
+            .from("module_access")
+            .select("id")
+            .eq("user_id", session.user.id)
+            .eq("module_key", "annual_report")
             .maybeSingle(),
         ]);
         setCanSeePos(!!posGrant);
