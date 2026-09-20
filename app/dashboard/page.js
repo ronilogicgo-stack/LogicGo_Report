@@ -17,6 +17,7 @@ export default function SalesDashboard() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
 
   const [editingTargets, setEditingTargets] = useState(false);
   const [targetForm, setTargetForm] = useState({
@@ -58,6 +59,21 @@ export default function SalesDashboard() {
 
     setTarget(t);
     setEntries(e || []);
+
+    // A red-banner reminder for any date an admin explicitly requested a
+    // fill-in for (via "Request Entry" on the missed-entries page) -
+    // fetched across ALL months so it shows up regardless of which
+    // month is currently selected above. It disappears on its own once
+    // the sales person saves real numbers, since DailyEntryForm always
+    // sets entry_type back to "submitted".
+    const { data: requested } = await supabase
+      .from("daily_entries")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .eq("entry_type", "requested")
+      .order("entry_date", { ascending: true });
+    setPendingRequests(requested || []);
+
     setLoading(false);
   }, [month, supabase]);
 
@@ -102,6 +118,15 @@ export default function SalesDashboard() {
     setSavingTargets(false);
   }
 
+  function goToRequestedEntry(entry) {
+    const entryMonth = `${entry.entry_date.slice(0, 7)}-01`;
+    if (entryMonth !== month) {
+      setMonth(entryMonth);
+    }
+    setEditingEntry(entry);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const summary = summarizeMonth(entries, target);
 
   function exportCSV() {
@@ -141,6 +166,27 @@ export default function SalesDashboard() {
           <ExportButtons onDownloadCSV={exportCSV} />
         </div>
       </div>
+
+      {pendingRequests.length > 0 && (
+        <div className="bg-red-50 border border-red-300 rounded-xl p-4 space-y-2 print:hidden">
+          <p className="font-semibold text-red-700 text-sm">
+            ⚠️ Your admin requested {pendingRequests.length === 1 ? "a report" : "reports"} for the
+            following {pendingRequests.length === 1 ? "date" : "dates"} - please fill{" "}
+            {pendingRequests.length === 1 ? "it" : "them"} in now:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {pendingRequests.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => goToRequestedEntry(r)}
+                className="text-sm bg-red-600 text-white rounded-lg px-3 py-1.5 hover:bg-red-700"
+              >
+                {r.entry_date} — Add Now
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {editingTargets && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
