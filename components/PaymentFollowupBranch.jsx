@@ -51,10 +51,17 @@ function PhoneActions({ phone }) {
 /** Shows at most `n` words, with the full text available as a native
  * hover tooltip - used for Location and Note so the table doesn't get
  * cluttered with long addresses/notes. */
-function TruncatedText({ text, words = 3, className = "" }) {
+function TruncatedText({ text, words, chars, className = "" }) {
   if (!text) return <span className={className}>-</span>;
-  const parts = String(text).trim().split(/\s+/);
-  const preview = parts.length > words ? parts.slice(0, words).join(" ") + "…" : text;
+  const str = String(text).trim();
+  let preview = str;
+  if (chars) {
+    preview = str.length > chars ? str.slice(0, chars) + "…" : str;
+  } else {
+    const parts = str.split(/\s+/);
+    const wordLimit = words ?? 3;
+    preview = parts.length > wordLimit ? parts.slice(0, wordLimit).join(" ") + "…" : str;
+  }
   return (
     <span className={className} title={text}>
       {preview}
@@ -701,12 +708,12 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                         <EditableCell
                           className="p-3 max-w-[160px]"
                           value={r.location || ""}
-                          format={(v) => <TruncatedText text={v} words={3} />}
+                          format={(v) => <TruncatedText text={v} chars={15} />}
                           onSave={(v) => saveField(r, "location", v)}
                         />
                       ) : (
                         <td className="p-3 max-w-[160px]">
-                          <TruncatedText text={r.location} words={3} />
+                          <TruncatedText text={r.location} chars={15} />
                         </td>
                       )}
                       {canEdit ? (
@@ -822,7 +829,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                     <div>
                       <p className="font-semibold">{r.company_name}</p>
                       <p className="text-xs text-slate-500">
-                        {r.executive_name} · <TruncatedText text={r.location} words={3} />
+                        {r.executive_name} · <TruncatedText text={r.location} chars={15} />
                       </p>
                       {r.note && (
                         <p className="text-xs text-slate-400 mt-0.5 truncate" title={r.note}>
