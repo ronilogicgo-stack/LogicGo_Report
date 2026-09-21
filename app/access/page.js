@@ -29,7 +29,7 @@ export default function AccessControlPage() {
         .from("profiles")
         .select("id, full_name, email")
         .in("status", ["approved", "paused"])
-        .or("is_sales_person.eq.true,is_admin.eq.true")
+        .or("is_sales_person.eq.true,is_admin.eq.true,is_accounts.eq.true")
         .order("full_name"),
       supabase.from("module_access").select("*"),
     ]);

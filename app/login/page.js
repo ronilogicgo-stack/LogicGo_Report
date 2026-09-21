@@ -70,7 +70,7 @@ function LoginForm() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("is_admin, is_sales_person, status")
+      .select("is_admin, is_sales_person, is_accounts, status")
       .eq("id", data.user.id)
       .single();
 
@@ -87,6 +87,11 @@ function LoginForm() {
     } else if (profile.is_sales_person && profile.status === "approved") {
       router.push("/dashboard");
     } else if (profile.is_sales_person && profile.status === "paused") {
+      await supabase.auth.signOut();
+      setError("Your account has been paused by the admin. Please contact your admin.");
+    } else if (profile.is_accounts && profile.status === "approved") {
+      router.push("/payment-followup");
+    } else if (profile.is_accounts && profile.status === "paused") {
       await supabase.auth.signOut();
       setError("Your account has been paused by the admin. Please contact your admin.");
     } else if (profile.status === "pending") {

@@ -57,7 +57,7 @@ export default function TeamManagementPage() {
     setPendingRoles((prev) => {
       const next = { ...prev };
       for (const p of pendingData || []) {
-        if (!(p.id in next)) next[p.id] = { is_sales_person: true, is_admin: false };
+        if (!(p.id in next)) next[p.id] = { is_sales_person: true, is_admin: false, is_accounts: false };
       }
       return next;
     });
@@ -66,7 +66,7 @@ export default function TeamManagementPage() {
       .from("profiles")
       .select("*")
       .in("status", ["approved", "paused"])
-      .or("is_sales_person.eq.true,is_admin.eq.true")
+      .or("is_sales_person.eq.true,is_admin.eq.true,is_accounts.eq.true")
       .order("full_name");
 
     if (teamData && teamData.length > 0) {
@@ -99,13 +99,14 @@ export default function TeamManagementPage() {
   }, [load]);
 
   async function approve(person) {
-    const roles = pendingRoles[person.id] || { is_sales_person: true, is_admin: false };
+    const roles = pendingRoles[person.id] || { is_sales_person: true, is_admin: false, is_accounts: false };
     setBusyId(person.id);
     const { error } = await supabase
       .from("profiles")
       .update({
         is_sales_person: roles.is_sales_person,
         is_admin: roles.is_admin,
+        is_accounts: roles.is_accounts,
         status: "approved",
       })
       .eq("id", person.id);
@@ -246,6 +247,7 @@ export default function TeamManagementPage() {
       employee_code: person.employee_code || "",
       is_sales_person: person.is_sales_person,
       is_admin: person.is_admin,
+      is_accounts: person.is_accounts,
     });
   }
 
@@ -259,6 +261,7 @@ export default function TeamManagementPage() {
         employee_code: editForm.employee_code,
         is_sales_person: editForm.is_sales_person,
         is_admin: editForm.is_admin,
+        is_accounts: editForm.is_accounts,
       })
       .eq("id", id);
     if (error) {
@@ -338,6 +341,22 @@ export default function TeamManagementPage() {
                         }
                       />
                       Admin
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={pendingRoles[p.id]?.is_accounts ?? false}
+                        onChange={(e) =>
+                          setPendingRoles({
+                            ...pendingRoles,
+                            [p.id]: {
+                              ...pendingRoles[p.id],
+                              is_accounts: e.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      Accounts
                     </label>
                   </div>
                 </div>
@@ -469,6 +488,16 @@ export default function TeamManagementPage() {
                         />
                         Admin
                       </label>
+                      <label className="flex items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={editForm.is_accounts}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, is_accounts: e.target.checked })
+                          }
+                        />
+                        Accounts
+                      </label>
                     </div>
                     <div className="flex gap-2 pt-1">
                       <button
@@ -505,6 +534,7 @@ export default function TeamManagementPage() {
                           <StatusBadge status={p.status} />
                           {p.is_sales_person && <RoleBadge label="Sales Person" />}
                           {p.is_admin && <RoleBadge label="Admin" color="indigo" />}
+                          {p.is_accounts && <RoleBadge label="Accounts" color="teal" />}
                           {isOwner &&
                             (moduleAccessMap[p.id] || []).map((t) => (
                               <RoleBadge

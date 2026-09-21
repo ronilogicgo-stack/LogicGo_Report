@@ -32,7 +32,7 @@ export default function Home() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("is_admin, is_sales_person, status")
+        .select("is_admin, is_sales_person, is_accounts, status")
         .eq("id", session.user.id)
         .single();
 
@@ -42,6 +42,8 @@ export default function Home() {
         router.replace("/admin");
       } else if (profile.is_sales_person && profile.status === "approved") {
         router.replace("/dashboard");
+      } else if (profile.is_accounts && profile.status === "approved") {
+        router.replace("/payment-followup");
       } else {
         router.replace("/signup?pending=1");
       }
