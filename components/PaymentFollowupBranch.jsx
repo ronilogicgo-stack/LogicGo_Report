@@ -597,23 +597,23 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
           {/* ---------- DESKTOP: table ---------- */}
           <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
             <table className="min-w-full text-sm [&_td]:align-middle [&_th]:align-middle [&_td]:whitespace-nowrap">
-              <thead className="bg-slate-100 text-left [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-slate-100">
+              <thead className="bg-slate-100 text-left">
                 <tr>
-                  <th className="p-3">SL</th>
-                  <th className="p-3">Executive</th>
-                  <th className="p-3">Company</th>
-                  <th className="p-3">Phone</th>
-                  <th className="p-3">Area</th>
-                  <th className="p-3">Location</th>
-                  <th className="p-3">Last Bill</th>
-                  <th className="p-3 text-right num">Received</th>
-                  <th className="p-3 text-right num">Due</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3 text-right num">Ledger Due</th>
-                  <th className="p-3">Note</th>
-                  <th className="p-3">Latest Followup</th>
-                  <th className="p-3">Priority</th>
-                  {canEdit && <th className="p-3"></th>}
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">SL</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Executive</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Company</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Phone</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Area</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Location</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Last Bill</th>
+                  <th className="p-3 text-right num sticky top-0 z-10 bg-slate-100">Received</th>
+                  <th className="p-3 text-right num sticky top-0 z-10 bg-slate-100">Due</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Status</th>
+                  <th className="p-3 text-right num sticky top-0 z-10 bg-slate-100">Ledger Due</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Note</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Latest Followup</th>
+                  <th className="p-3 sticky top-0 z-10 bg-slate-100">Priority</th>
+                  {canEdit && <th className="p-3 sticky top-0 z-10 bg-slate-100"></th>}
                 </tr>
               </thead>
               <tbody>
