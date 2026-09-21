@@ -132,7 +132,6 @@ function EditableCell({ value, onSave, type = "text", options, className = "", f
 const emptyForm = {
   serial: "",
   executive_name: "",
-  area_name: "",
   company_name: "",
   phone_number: "",
   area: "",
@@ -300,7 +299,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
     setForm({
       serial: r.serial ?? "",
       executive_name: r.executive_name ?? "",
-      area_name: r.area_name ?? "",
       company_name: r.company_name ?? "",
       phone_number: r.phone_number ?? "",
       area: r.area ?? "",
@@ -327,7 +325,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       branch_id: branchId,
       serial: Number(form.serial) || null,
       executive_name: form.executive_name,
-      area_name: form.area_name,
       company_name: form.company_name,
       phone_number: form.phone_number,
       area: form.area,
@@ -411,12 +408,12 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
 
   function exportCSV() {
     const headers = [
-      "Serial", "Executive", "Area Name", "Company", "Phone", "Area", "Location",
+      "Serial", "Executive", "Company", "Phone", "Area", "Location",
       "Last Bill", "Received", "Due", "Status", "Ledger Due", "Note",
       "1st Followup", "2nd Followup", "3rd Followup", "4th Followup", "5th Followup",
     ];
     const rows = filteredSorted.map((r) => [
-      r.serial, r.executive_name, r.area_name, r.company_name, r.phone_number,
+      r.serial, r.executive_name, r.company_name, r.phone_number,
       r.area, r.location, r.last_bill, r.received_amount, r.due_amount, r.payment_status,
       r.ledger_due, r.note,
       r.followup_date_1, r.followup_date_2, r.followup_date_3, r.followup_date_4, r.followup_date_5,
@@ -555,7 +552,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <LabeledInput label="Serial" type="number" value={form.serial} onChange={(v) => setForm({ ...form, serial: v })} />
             <LabeledInput label="Executive Name" value={form.executive_name} onChange={(v) => setForm({ ...form, executive_name: v })} />
-            <LabeledInput label="Area Name" value={form.area_name} onChange={(v) => setForm({ ...form, area_name: v })} />
             <LabeledInput label="Company Name" required value={form.company_name} onChange={(v) => setForm({ ...form, company_name: v })} />
             <LabeledInput label="Phone Number" value={form.phone_number} onChange={(v) => setForm({ ...form, phone_number: v })} />
             <LabeledInput label="Area" value={form.area} onChange={(v) => setForm({ ...form, area: v })} />
@@ -605,7 +601,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                 <tr>
                   <th className="p-3">SL</th>
                   <th className="p-3">Executive</th>
-                  <th className="p-3">Area Name</th>
                   <th className="p-3">Company</th>
                   <th className="p-3">Phone</th>
                   <th className="p-3">Area</th>
@@ -640,15 +635,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                         />
                       ) : (
                         <td className="p-3">{r.executive_name || "-"}</td>
-                      )}
-                      {canEdit ? (
-                        <EditableCell
-                          className="p-3"
-                          value={r.area_name || ""}
-                          onSave={(v) => saveField(r, "area_name", v)}
-                        />
-                      ) : (
-                        <td className="p-3">{r.area_name || "-"}</td>
                       )}
                       <td className="p-3">
                         {canEdit ? (
