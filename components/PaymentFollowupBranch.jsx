@@ -315,8 +315,9 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
     for (const r of records) {
       if (r.payment_status !== "Due") continue;
       const name = r.executive_name?.trim() || "Unassigned";
-      if (!byExec[name]) byExec[name] = { name, dueClients: 0, totalLedgerDue: 0 };
+      if (!byExec[name]) byExec[name] = { name, dueClients: 0, totalDueAmount: 0, totalLedgerDue: 0 };
       byExec[name].dueClients += 1;
+      byExec[name].totalDueAmount += Number(r.due_amount) || 0;
       byExec[name].totalLedgerDue += Number(r.ledger_due) || 0;
     }
     return Object.values(byExec).sort((a, b) => b.totalLedgerDue - a.totalLedgerDue);
@@ -580,6 +581,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                 <tr>
                   <th className="p-3">Executive</th>
                   <th className="p-3 text-right num">Due Clients</th>
+                  <th className="p-3 text-right num">Total Due Amount</th>
                   <th className="p-3 text-right num">Total Ledger Due</th>
                 </tr>
               </thead>
@@ -588,6 +590,9 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                   <tr key={e.name} className="border-t">
                     <td className="p-3 font-medium">{e.name}</td>
                     <td className="p-3 text-right num">{e.dueClients}</td>
+                    <td className="p-3 text-right num font-medium text-red-600">
+                      {fmt(e.totalDueAmount)}
+                    </td>
                     <td className="p-3 text-right num font-medium text-red-600">
                       {fmt(e.totalLedgerDue)}
                     </td>
@@ -599,6 +604,9 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                   <td className="p-3">Total</td>
                   <td className="p-3 text-right num">
                     {executiveSummary.reduce((s, e) => s + e.dueClients, 0)}
+                  </td>
+                  <td className="p-3 text-right num">
+                    {fmt(executiveSummary.reduce((s, e) => s + e.totalDueAmount, 0))}
                   </td>
                   <td className="p-3 text-right num">
                     {fmt(executiveSummary.reduce((s, e) => s + e.totalLedgerDue, 0))}
