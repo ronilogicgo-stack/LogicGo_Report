@@ -597,7 +597,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
           {/* ---------- DESKTOP: table ---------- */}
           <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
             <table className="min-w-full text-sm [&_td]:align-middle [&_th]:align-middle [&_td]:whitespace-nowrap">
-              <thead className="bg-slate-100 text-left">
+              <thead className="bg-slate-100 text-left [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-slate-100">
                 <tr>
                   <th className="p-3">SL</th>
                   <th className="p-3">Executive</th>
