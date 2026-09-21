@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Phone, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
-import { fmt, dateKey, sortFollowups, followupPriority } from "@/lib/calculations";
+import { fmt, sortFollowups, followupPriority } from "@/lib/calculations";
 import { downloadCSV } from "@/lib/csv";
 import ExportButtons from "@/components/ExportButtons";
 
@@ -131,12 +131,13 @@ function EditableCell({ value, onSave, type = "text", options, className = "", f
 
 const emptyForm = {
   serial: "",
-  entry_date: dateKey(),
   executive_name: "",
   area_name: "",
   company_name: "",
   phone_number: "",
+  area: "",
   location: "",
+  last_bill: "",
   received_amount: "",
   due_amount: "",
   payment_status: "Due",
@@ -298,12 +299,13 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   function startEdit(r) {
     setForm({
       serial: r.serial ?? "",
-      entry_date: r.entry_date ?? "",
       executive_name: r.executive_name ?? "",
       area_name: r.area_name ?? "",
       company_name: r.company_name ?? "",
       phone_number: r.phone_number ?? "",
+      area: r.area ?? "",
       location: r.location ?? "",
+      last_bill: r.last_bill ?? "",
       received_amount: r.received_amount ?? "",
       due_amount: r.due_amount ?? "",
       payment_status: r.payment_status ?? "Due",
@@ -324,12 +326,13 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
     const payload = {
       branch_id: branchId,
       serial: Number(form.serial) || null,
-      entry_date: form.entry_date || null,
       executive_name: form.executive_name,
       area_name: form.area_name,
       company_name: form.company_name,
       phone_number: form.phone_number,
+      area: form.area,
       location: form.location,
+      last_bill: form.last_bill || null,
       received_amount: Number(form.received_amount) || 0,
       due_amount: Number(form.due_amount) || 0,
       payment_status: form.payment_status,
@@ -408,13 +411,14 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
 
   function exportCSV() {
     const headers = [
-      "Serial", "Entry Date", "Executive", "Area/Client", "Company", "Phone", "Location",
-      "Received", "Due", "Status", "Ledger Due", "Note",
+      "Serial", "Executive", "Area Name", "Company", "Phone", "Area", "Location",
+      "Last Bill", "Received", "Due", "Status", "Ledger Due", "Note",
       "1st Followup", "2nd Followup", "3rd Followup", "4th Followup", "5th Followup",
     ];
     const rows = filteredSorted.map((r) => [
-      r.serial, r.entry_date, r.executive_name, r.area_name, r.company_name, r.phone_number,
-      r.location, r.received_amount, r.due_amount, r.payment_status, r.ledger_due, r.note,
+      r.serial, r.executive_name, r.area_name, r.company_name, r.phone_number,
+      r.area, r.location, r.last_bill, r.received_amount, r.due_amount, r.payment_status,
+      r.ledger_due, r.note,
       r.followup_date_1, r.followup_date_2, r.followup_date_3, r.followup_date_4, r.followup_date_5,
     ]);
     const filenameSuffix = selectedExecutive ? `_${selectedExecutive.replace(/\s+/g, "_")}` : "";
@@ -550,12 +554,13 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <LabeledInput label="Serial" type="number" value={form.serial} onChange={(v) => setForm({ ...form, serial: v })} />
-            <LabeledInput label="Entry Date" type="date" value={form.entry_date} onChange={(v) => setForm({ ...form, entry_date: v })} />
             <LabeledInput label="Executive Name" value={form.executive_name} onChange={(v) => setForm({ ...form, executive_name: v })} />
-            <LabeledInput label="Area / Client" value={form.area_name} onChange={(v) => setForm({ ...form, area_name: v })} />
+            <LabeledInput label="Area Name" value={form.area_name} onChange={(v) => setForm({ ...form, area_name: v })} />
             <LabeledInput label="Company Name" required value={form.company_name} onChange={(v) => setForm({ ...form, company_name: v })} />
             <LabeledInput label="Phone Number" value={form.phone_number} onChange={(v) => setForm({ ...form, phone_number: v })} />
+            <LabeledInput label="Area" value={form.area} onChange={(v) => setForm({ ...form, area: v })} />
             <LabeledInput label="Location" value={form.location} onChange={(v) => setForm({ ...form, location: v })} />
+            <LabeledInput label="Last Bill" type="date" value={form.last_bill} onChange={(v) => setForm({ ...form, last_bill: v })} />
             <div>
               <label className="text-xs text-slate-500">Payment Status</label>
               <select
@@ -599,11 +604,13 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
               <thead className="bg-slate-100 text-left">
                 <tr>
                   <th className="p-3">SL</th>
-                  <th className="p-3">Entry Date</th>
                   <th className="p-3">Executive</th>
+                  <th className="p-3">Area Name</th>
                   <th className="p-3">Company</th>
                   <th className="p-3">Phone</th>
+                  <th className="p-3">Area</th>
                   <th className="p-3">Location</th>
+                  <th className="p-3">Last Bill</th>
                   <th className="p-3 text-right num">Received</th>
                   <th className="p-3 text-right num">Due</th>
                   <th className="p-3">Status</th>
@@ -628,21 +635,20 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                       {canEdit ? (
                         <EditableCell
                           className="p-3"
-                          type="date"
-                          value={r.entry_date || ""}
-                          onSave={(v) => saveField(r, "entry_date", v)}
-                        />
-                      ) : (
-                        <td className="p-3">{r.entry_date || "-"}</td>
-                      )}
-                      {canEdit ? (
-                        <EditableCell
-                          className="p-3"
                           value={r.executive_name || ""}
                           onSave={(v) => saveField(r, "executive_name", v)}
                         />
                       ) : (
                         <td className="p-3">{r.executive_name || "-"}</td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3"
+                          value={r.area_name || ""}
+                          onSave={(v) => saveField(r, "area_name", v)}
+                        />
+                      ) : (
+                        <td className="p-3">{r.area_name || "-"}</td>
                       )}
                       <td className="p-3">
                         {canEdit ? (
@@ -698,6 +704,15 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                       </td>
                       {canEdit ? (
                         <EditableCell
+                          className="p-3"
+                          value={r.area || ""}
+                          onSave={(v) => saveField(r, "area", v)}
+                        />
+                      ) : (
+                        <td className="p-3">{r.area || "-"}</td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
                           className="p-3 max-w-[160px]"
                           value={r.location || ""}
                           format={(v) => <TruncatedText text={v} words={3} />}
@@ -707,6 +722,16 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                         <td className="p-3 max-w-[160px]">
                           <TruncatedText text={r.location} words={3} />
                         </td>
+                      )}
+                      {canEdit ? (
+                        <EditableCell
+                          className="p-3"
+                          type="date"
+                          value={r.last_bill || ""}
+                          onSave={(v) => saveField(r, "last_bill", v)}
+                        />
+                      ) : (
+                        <td className="p-3">{r.last_bill || "-"}</td>
                       )}
                       {canEdit ? (
                         <EditableCell
@@ -827,6 +852,10 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-y-1 text-sm text-slate-600">
+                    <span>Area</span>
+                    <span className="text-right">{r.area || "-"}</span>
+                    <span>Last Bill</span>
+                    <span className="text-right">{r.last_bill || "-"}</span>
                     <span>Received</span>
                     <span className="text-right num">{fmt(r.received_amount)}</span>
                     <span>Due</span>
