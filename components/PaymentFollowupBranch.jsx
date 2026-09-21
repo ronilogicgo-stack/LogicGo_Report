@@ -602,7 +602,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       ) : (
         <div className="print-area">
           {/* ---------- DESKTOP: table ---------- */}
-          <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto max-h-[75vh]">
             <table className="min-w-full text-sm [&_td]:align-middle [&_th]:align-middle [&_td]:whitespace-nowrap">
               <thead className="bg-slate-100 text-left">
                 <tr>
