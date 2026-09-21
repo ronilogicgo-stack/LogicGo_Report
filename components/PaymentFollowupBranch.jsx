@@ -195,6 +195,16 @@ function buildFollowupSlots(record, newDateValue) {
   };
 }
 
+/** The single most-recent of the 5 stored follow-up dates for display
+ * and filtering - "-" (a non-date sentinel) if none are set. */
+function getLatestFollowup(record) {
+  const dates = [
+    record?.followup_date_1, record?.followup_date_2, record?.followup_date_3,
+    record?.followup_date_4, record?.followup_date_5,
+  ].filter(Boolean);
+  return dates.length ? dates.reduce((m, d) => (d > m ? d : m), dates[0]) : "-";
+}
+
 const ROW_TONE = {
   red: "bg-red-50",
   yellow: "bg-amber-50",
@@ -230,6 +240,9 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   const [showForm, setShowForm] = useState(false);
   const [showExecSummary, setShowExecSummary] = useState(true);
   const [selectedExecutive, setSelectedExecutive] = useState("");
+  const [selectedArea, setSelectedArea] = useState("");
+  const [selectedLastBillDate, setSelectedLastBillDate] = useState("");
+  const [selectedFollowupDate, setSelectedFollowupDate] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -264,13 +277,29 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [records]);
 
-  // The main table/cards/CSV respect the dropdown filter; the badge
-  // counts and the Executive Summary above stay based on every record
-  // in the branch, so the overview never silently hides anyone.
+  // Same idea, for Area.
+  const areaNames = useMemo(() => {
+    const names = new Set();
+    for (const r of records) {
+      const name = r.area?.trim();
+      if (name) names.add(name);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [records]);
+
+  // The main table/cards/CSV respect every active filter at once (AND
+  // logic) - the badge counts and the Executive Summary above stay
+  // based on every record in the branch, so the overview never
+  // silently hides anyone.
   const filteredSorted = useMemo(() => {
-    if (!selectedExecutive) return sorted;
-    return sorted.filter((r) => (r.executive_name?.trim() || "") === selectedExecutive);
-  }, [sorted, selectedExecutive]);
+    return sorted.filter((r) => {
+      if (selectedExecutive && (r.executive_name?.trim() || "") !== selectedExecutive) return false;
+      if (selectedArea && (r.area?.trim() || "") !== selectedArea) return false;
+      if (selectedLastBillDate && r.last_bill !== selectedLastBillDate) return false;
+      if (selectedFollowupDate && getLatestFollowup(r) !== selectedFollowupDate) return false;
+      return true;
+    });
+  }, [sorted, selectedExecutive, selectedArea, selectedLastBillDate, selectedFollowupDate]);
 
   const counts = useMemo(() => {
     const c = { red: 0, yellow: 0, normal: 0 };
@@ -425,7 +454,8 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       r.ledger_due, r.note,
       r.followup_date_1, r.followup_date_2, r.followup_date_3, r.followup_date_4, r.followup_date_5,
     ]);
-    const filenameSuffix = selectedExecutive ? `_${selectedExecutive.replace(/\s+/g, "_")}` : "";
+    const suffixParts = [selectedExecutive, selectedArea, selectedLastBillDate, selectedFollowupDate].filter(Boolean);
+    const filenameSuffix = suffixParts.length ? `_${suffixParts.join("_").replace(/\s+/g, "_")}` : "";
     downloadCSV(`payment_followup_${branchName.replace(/\s+/g, "_")}${filenameSuffix}.csv`, headers, rows);
   }
 
@@ -480,6 +510,54 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
               ))}
             </select>
           </label>
+        )}
+        {areaNames.length > 0 && (
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            Area
+            <select
+              value={selectedArea}
+              onChange={(e) => setSelectedArea(e.target.value)}
+              className="border rounded-lg px-2 py-1.5 text-sm bg-white"
+            >
+              <option value="">All Areas</option>
+              {areaNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="flex items-center gap-2 text-sm text-slate-600">
+          Last Bill
+          <input
+            type="date"
+            value={selectedLastBillDate}
+            onChange={(e) => setSelectedLastBillDate(e.target.value)}
+            className="border rounded-lg px-2 py-1.5 text-sm bg-white"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-600">
+          Followup Date
+          <input
+            type="date"
+            value={selectedFollowupDate}
+            onChange={(e) => setSelectedFollowupDate(e.target.value)}
+            className="border rounded-lg px-2 py-1.5 text-sm bg-white"
+          />
+        </label>
+        {(selectedExecutive || selectedArea || selectedLastBillDate || selectedFollowupDate) && (
+          <button
+            onClick={() => {
+              setSelectedExecutive("");
+              setSelectedArea("");
+              setSelectedLastBillDate("");
+              setSelectedFollowupDate("");
+            }}
+            className="text-xs text-blue-600 underline"
+          >
+            Clear filters
+          </button>
         )}
       </div>
 
@@ -595,8 +673,8 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
         <p className="text-slate-500">Loading...</p>
       ) : filteredSorted.length === 0 ? (
         <p className="text-slate-500">
-          {selectedExecutive
-            ? `No records for ${selectedExecutive}.`
+          {selectedExecutive || selectedArea || selectedLastBillDate || selectedFollowupDate
+            ? "No records match the current filters."
             : "No records yet."}
         </p>
       ) : (
@@ -626,11 +704,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
               <tbody>
                 {filteredSorted.map((r) => {
                   const priority = followupPriority(r);
-                  const dates = [
-                    r.followup_date_1, r.followup_date_2, r.followup_date_3,
-                    r.followup_date_4, r.followup_date_5,
-                  ].filter(Boolean);
-                  const latest = dates.length ? dates.reduce((m, d) => (d > m ? d : m), dates[0]) : "-";
+                  const latest = getLatestFollowup(r);
                   return (
                     <tr key={r.id} className={`border-t ${ROW_TONE[priority]}`}>
                       <td className="p-3 num">{r.serial ?? "-"}</td>
@@ -818,11 +892,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
           <div className="lg:hidden space-y-3">
             {filteredSorted.map((r) => {
               const priority = followupPriority(r);
-              const dates = [
-                r.followup_date_1, r.followup_date_2, r.followup_date_3,
-                r.followup_date_4, r.followup_date_5,
-              ].filter(Boolean);
-              const latest = dates.length ? dates.reduce((m, d) => (d > m ? d : m), dates[0]) : "-";
+              const latest = getLatestFollowup(r);
               return (
                 <div key={r.id} className={`rounded-xl border border-slate-200 shadow-sm p-4 ${ROW_TONE[priority]}`}>
                   <div className="flex items-start justify-between gap-2 mb-2">
