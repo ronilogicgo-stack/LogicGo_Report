@@ -730,12 +730,12 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                 </tr>
               </thead>
               <tbody>
-                {filteredSorted.map((r) => {
+                {filteredSorted.map((r, idx) => {
                   const priority = followupPriority(r);
                   const latest = getLatestFollowup(r);
                   return (
                     <tr key={r.id} className={`border-t ${ROW_TONE[priority]}`}>
-                      <td className="p-3 num">{r.serial ?? "-"}</td>
+                      <td className="p-3 num">{idx + 1}</td>
                       {canEdit ? (
                         <EditableCell
                           className="p-3"
