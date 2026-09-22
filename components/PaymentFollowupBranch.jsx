@@ -264,6 +264,35 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
     load();
   }, [load]);
 
+  // Keep every open tab/session in sync live - without this, an
+  // insert/edit/delete made in one browser tab only ever updated that
+  // tab's own local state; other tabs (including the same person's,
+  // or other team members') kept showing stale data until a manual
+  // reload. Requires payment_followups to be added to the
+  // supabase_realtime publication (see migration_v41.sql).
+  useEffect(() => {
+    const channel = supabase
+      .channel(`payment_followups_${branchId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payment_followups", filter: `branch_id=eq.${branchId}` },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setRecords((prev) => (prev.some((r) => r.id === payload.new.id) ? prev : [...prev, payload.new]));
+          } else if (payload.eventType === "UPDATE") {
+            setRecords((prev) => prev.map((r) => (r.id === payload.new.id ? payload.new : r)));
+          } else if (payload.eventType === "DELETE") {
+            setRecords((prev) => prev.filter((r) => r.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [branchId, supabase]);
+
   const sorted = useMemo(() => sortFollowups(records), [records]);
 
   // Every distinct executive name across ALL of this branch's records
