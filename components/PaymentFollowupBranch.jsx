@@ -243,6 +243,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   const [selectedArea, setSelectedArea] = useState("");
   const [selectedLastBillDate, setSelectedLastBillDate] = useState("");
   const [selectedFollowupDate, setSelectedFollowupDate] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -292,14 +293,24 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   // based on every record in the branch, so the overview never
   // silently hides anyone.
   const filteredSorted = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return sorted.filter((r) => {
       if (selectedExecutive && (r.executive_name?.trim() || "") !== selectedExecutive) return false;
       if (selectedArea && (r.area?.trim() || "") !== selectedArea) return false;
       if (selectedLastBillDate && r.last_bill !== selectedLastBillDate) return false;
       if (selectedFollowupDate && getLatestFollowup(r) !== selectedFollowupDate) return false;
+      if (q) {
+        const haystack = [
+          r.company_name, r.phone_number, r.executive_name, r.area, r.location, r.note,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
       return true;
     });
-  }, [sorted, selectedExecutive, selectedArea, selectedLastBillDate, selectedFollowupDate]);
+  }, [sorted, selectedExecutive, selectedArea, selectedLastBillDate, selectedFollowupDate, searchQuery]);
 
   const counts = useMemo(() => {
     const c = { red: 0, yellow: 0, normal: 0 };
@@ -455,7 +466,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       r.ledger_due, r.note,
       r.followup_date_1, r.followup_date_2, r.followup_date_3, r.followup_date_4, r.followup_date_5,
     ]);
-    const suffixParts = [selectedExecutive, selectedArea, selectedLastBillDate, selectedFollowupDate].filter(Boolean);
+    const suffixParts = [selectedExecutive, selectedArea, selectedLastBillDate, selectedFollowupDate, searchQuery].filter(Boolean);
     const filenameSuffix = suffixParts.length ? `_${suffixParts.join("_").replace(/\s+/g, "_")}` : "";
     downloadCSV(`payment_followup_${branchName.replace(/\s+/g, "_")}${filenameSuffix}.csv`, headers, rows);
   }
@@ -495,8 +506,16 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
           {counts.normal} On Track
         </span>
 
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search company, phone, executive, area, location, note…"
+          className="ml-auto border rounded-lg px-3 py-1.5 text-sm bg-white w-full sm:w-64"
+        />
+
         {executiveNames.length > 0 && (
-          <label className="ml-auto flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
             Executive
             <select
               value={selectedExecutive}
@@ -547,13 +566,14 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
             className="border rounded-lg px-2 py-1.5 text-sm bg-white"
           />
         </label>
-        {(selectedExecutive || selectedArea || selectedLastBillDate || selectedFollowupDate) && (
+        {(selectedExecutive || selectedArea || selectedLastBillDate || selectedFollowupDate || searchQuery) && (
           <button
             onClick={() => {
               setSelectedExecutive("");
               setSelectedArea("");
               setSelectedLastBillDate("");
               setSelectedFollowupDate("");
+              setSearchQuery("");
             }}
             className="text-xs text-blue-600 underline"
           >
@@ -681,7 +701,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
         <p className="text-slate-500">Loading...</p>
       ) : filteredSorted.length === 0 ? (
         <p className="text-slate-500">
-          {selectedExecutive || selectedArea || selectedLastBillDate || selectedFollowupDate
+          {selectedExecutive || selectedArea || selectedLastBillDate || selectedFollowupDate || searchQuery
             ? "No records match the current filters."
             : "No records yet."}
         </p>
