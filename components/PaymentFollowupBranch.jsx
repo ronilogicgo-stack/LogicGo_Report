@@ -6,8 +6,6 @@ import { createClient } from "@/lib/supabaseClient";
 import { fmt, sortFollowups, followupPriority } from "@/lib/calculations";
 import { downloadCSV } from "@/lib/csv";
 import ExportButtons from "@/components/ExportButtons";
-// WHATSAPP FEATURE (see components/PaymentFollowupWhatsApp.jsx to remove this feature entirely)
-import { WhatsAppSendButton, WhatsAppContactsManager } from "@/components/PaymentFollowupWhatsApp";
 
 /** Normalizes a Bangladeshi phone number (with or without a leading 0
  * or the 880 country code, with or without dashes/spaces) into a bare
@@ -251,17 +249,14 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  // WHATSAPP FEATURE (see components/PaymentFollowupWhatsApp.jsx to remove this feature entirely)
-  const [whatsappTargets, setWhatsappTargets] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data }, { data: waTargets }] = await Promise.all([
-      supabase.from("payment_followups").select("*").eq("branch_id", branchId),
-      supabase.from("payment_followup_whatsapp_targets").select("*").eq("branch_id", branchId),
-    ]);
+    const { data } = await supabase
+      .from("payment_followups")
+      .select("*")
+      .eq("branch_id", branchId);
     setRecords(data || []);
-    setWhatsappTargets(waTargets || []);
     setLoading(false);
   }, [branchId, supabase]);
 
@@ -670,14 +665,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
               </tfoot>
             </table>
           )}
-
-          {/* WHATSAPP FEATURE (see components/PaymentFollowupWhatsApp.jsx to remove this feature entirely) */}
-          <WhatsAppContactsManager
-            branchId={branchId}
-            targets={whatsappTargets}
-            onChange={setWhatsappTargets}
-            canEdit={canEdit}
-          />
         </div>
       )}
 
@@ -950,7 +937,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                           <button onClick={() => handleDelete(r)} className="text-xs text-red-600 underline">
                             Delete
                           </button>
-                          <WhatsAppSendButton record={{ ...r, latestFollowup: latest }} targets={whatsappTargets} />
                         </td>
                       )}
                     </tr>
@@ -1008,7 +994,6 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
                       <button onClick={() => handleDelete(r)} className="text-xs text-red-600 underline">
                         Delete
                       </button>
-                      <WhatsAppSendButton record={{ ...r, latestFollowup: latest }} targets={whatsappTargets} />
                     </div>
                   )}
                 </div>
