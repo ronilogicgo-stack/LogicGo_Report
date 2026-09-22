@@ -301,9 +301,10 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
       if (selectedFollowupDate && getLatestFollowup(r) !== selectedFollowupDate) return false;
       if (q) {
         const haystack = [
-          r.company_name, r.phone_number, r.executive_name, r.area, r.location, r.note,
+          r.serial, r.company_name, r.phone_number, r.executive_name, r.area, r.location,
+          r.note, r.payment_status, r.received_amount, r.due_amount, r.ledger_due,
         ]
-          .filter(Boolean)
+          .filter((v) => v !== null && v !== undefined && v !== "")
           .join(" ")
           .toLowerCase();
         if (!haystack.includes(q)) return false;
