@@ -82,6 +82,20 @@ export default function AdminDashboard() {
     load();
   }, [load]);
 
+  // Live-refresh whenever any Sales Person adds/edits a daily entry
+  // (or an Admin changes a target) elsewhere - so this report never
+  // shows stale data just because it was already open.
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin_monthly_report_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "daily_entries" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "monthly_targets" }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, load]);
+
   function startEdit(row) {
     setEditingId(row.person.id);
     setEditForm({

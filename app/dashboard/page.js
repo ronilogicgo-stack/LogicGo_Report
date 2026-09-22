@@ -81,6 +81,20 @@ export default function SalesDashboard() {
     load();
   }, [load]);
 
+  // Live-refresh this person's own view whenever their daily_entries
+  // change from elsewhere - most importantly, so an admin's "Request
+  // Entry" (the red banner above) appears immediately without needing
+  // a manual reload.
+  useEffect(() => {
+    const channel = supabase
+      .channel("sales_person_dashboard_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "daily_entries" }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, load]);
+
   function startEditTargets() {
     setTargetForm({
       opening_dues: target?.opening_dues || 0,

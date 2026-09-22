@@ -179,6 +179,19 @@ export default function DailyReportPage() {
     load();
   }, [load]);
 
+  // Live-refresh whenever any Sales Person adds/edits a daily entry
+  // elsewhere, so this report never shows stale data just because it
+  // was already open.
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin_daily_report_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "daily_entries" }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, load]);
+
   const grandTotal = rows.reduce(
     (acc, r) => {
       acc.sales += r.sales;
