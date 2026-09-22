@@ -238,7 +238,7 @@ export default function PaymentFollowupBranch({ branchId, branchName, canEdit })
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showExecSummary, setShowExecSummary] = useState(true);
+  const [showExecSummary, setShowExecSummary] = useState(false);
   const [selectedExecutive, setSelectedExecutive] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
   const [selectedLastBillDate, setSelectedLastBillDate] = useState("");
