@@ -171,7 +171,7 @@ export default function AdminLayout({ children }) {
           )}
           {canSeeRma && (
             <Link
-              href="/rma"
+              href="/admin/rma"
               className="text-sm text-indigo-100 hover:text-white"
             >
               RMA
