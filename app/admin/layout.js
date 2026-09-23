@@ -16,6 +16,7 @@ export default function AdminLayout({ children }) {
   const [missedCount, setMissedCount] = useState(0);
   const [canSeePos, setCanSeePos] = useState(false);
   const [canSeeAnnualReport, setCanSeeAnnualReport] = useState(false);
+  const [canSeeRma, setCanSeeRma] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -53,8 +54,9 @@ export default function AdminLayout({ children }) {
       if (isOwner) {
         setCanSeePos(true);
         setCanSeeAnnualReport(true);
+        setCanSeeRma(true);
       } else {
-        const [{ data: posGrant }, { data: reportGrant }] = await Promise.all([
+        const [{ data: posGrant }, { data: reportGrant }, { data: rmaGrant }] = await Promise.all([
           supabase
             .from("module_access")
             .select("id")
@@ -67,9 +69,16 @@ export default function AdminLayout({ children }) {
             .eq("user_id", session.user.id)
             .eq("module_key", "annual_report")
             .maybeSingle(),
+          supabase
+            .from("module_access")
+            .select("id")
+            .eq("user_id", session.user.id)
+            .eq("module_key", "rma")
+            .maybeSingle(),
         ]);
         setCanSeePos(!!posGrant);
         setCanSeeAnnualReport(!!reportGrant);
+        setCanSeeRma(!!rmaGrant);
       }
 
       // Non-blocking: badge count for unresolved missed-entry notifications.
@@ -158,6 +167,14 @@ export default function AdminLayout({ children }) {
               className="text-sm text-indigo-100 hover:text-white"
             >
               Annual Report
+            </Link>
+          )}
+          {canSeeRma && (
+            <Link
+              href="/rma"
+              className="text-sm text-indigo-100 hover:text-white"
+            >
+              RMA
             </Link>
           )}
           <Link

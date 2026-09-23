@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }) {
   const [hasFollowupAccess, setHasFollowupAccess] = useState(false);
   const [hasPosAccess, setHasPosAccess] = useState(false);
   const [hasAnnualReportAccess, setHasAnnualReportAccess] = useState(false);
+  const [hasRmaAccess, setHasRmaAccess] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
 
   useEffect(() => {
@@ -78,6 +79,14 @@ export default function DashboardLayout({ children }) {
         .eq("module_key", "annual_report")
         .maybeSingle();
       setHasAnnualReportAccess(!!reportGrant);
+
+      const { data: rmaGrant } = await supabase
+        .from("module_access")
+        .select("id")
+        .eq("user_id", session.user.id)
+        .eq("module_key", "rma")
+        .maybeSingle();
+      setHasRmaAccess(!!rmaGrant);
 
       setChecked(true);
     }
@@ -143,6 +152,11 @@ export default function DashboardLayout({ children }) {
           {hasAnnualReportAccess && (
             <Link href="/annual-report" className="text-sm text-indigo-100 hover:text-white">
               Annual Report
+            </Link>
+          )}
+          {hasRmaAccess && (
+            <Link href="/rma" className="text-sm text-indigo-100 hover:text-white">
+              RMA
             </Link>
           )}
           {alsoAdmin && (
