@@ -14,7 +14,11 @@ export default function RmaListView({ basePath, canEdit }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from("rma_records").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase
+      .from("rma_records")
+      .select("*")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
     setRecords(data || []);
     setLoading(false);
   }, [supabase]);

@@ -6,7 +6,7 @@ import RmaDetailView from "@/components/RmaDetailView";
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
 export default function AdminRmaDetailPage() {
-  const { checked, hasAccess, canEdit } = useAdminModuleAccess("rma");
+  const { checked, hasAccess, canEdit, canDelete } = useAdminModuleAccess("rma");
 
   if (!checked) return <p className="text-slate-500">Checking access...</p>;
   if (!hasAccess) {
@@ -16,5 +16,5 @@ export default function AdminRmaDetailPage() {
       </p>
     );
   }
-  return <RmaDetailView basePath="/admin/rma" canEdit={canEdit} />;
+  return <RmaDetailView basePath="/admin/rma" canEdit={canEdit} canDelete={canDelete} />;
 }

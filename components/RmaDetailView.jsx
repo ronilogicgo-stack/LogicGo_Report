@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { RMA_STATUSES, STATUS_COLORS, ACTION_LABELS, formatDateTime } from "@/lib/rma";
 import {
   ShieldCheck, RefreshCw, MessageSquare, CalendarClock, Stethoscope,
-  Wrench, CheckCircle2, Truck, PackageCheck, ChevronDown,
+  Wrench, CheckCircle2, Truck, PackageCheck, ChevronDown, Pencil,
 } from "lucide-react";
 
-export default function RmaDetailView({ basePath, canEdit }) {
+export default function RmaDetailView({ basePath, canEdit, canDelete }) {
   const supabase = createClient();
   const { id } = useParams();
+  const router = useRouter();
 
   const [rma, setRma] = useState(null);
   const [timeline, setTimeline] = useState([]);
@@ -35,6 +36,8 @@ export default function RmaDetailView({ basePath, canEdit }) {
   const [courierTracking, setCourierTracking] = useState("");
   const [receiverName, setReceiverName] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState("");
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [detailsForm, setDetailsForm] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,6 +77,51 @@ export default function RmaDetailView({ basePath, canEdit }) {
     load();
   }
 
+  function startEditDetails() {
+    setDetailsForm({
+      customer_name: rma.customer_name || "",
+      customer_phone: rma.customer_phone || "",
+      product_name: rma.product_name || "",
+      product_model: rma.product_model || "",
+      serial_number: rma.serial_number || "",
+      issue_description: rma.issue_description || "",
+    });
+    setEditingDetails(true);
+  }
+
+  async function saveDetails() {
+    setBusy(true);
+    setError("");
+    const { error: rpcError } = await supabase.rpc("rma_update_details", {
+      p_rma_id: id,
+      p_customer_name: detailsForm.customer_name,
+      p_customer_phone: detailsForm.customer_phone,
+      p_product_name: detailsForm.product_name,
+      p_product_model: detailsForm.product_model,
+      p_serial_number: detailsForm.serial_number,
+      p_issue_description: detailsForm.issue_description,
+    });
+    setBusy(false);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    setEditingDetails(false);
+    load();
+  }
+
+  async function deleteRma() {
+    if (!confirm("Delete this RMA? It will disappear from the list, but its full history is kept permanently.")) return;
+    setBusy(true);
+    const { error: rpcError } = await supabase.rpc("rma_delete", { p_rma_id: id });
+    setBusy(false);
+    if (rpcError) {
+      alert(rpcError.message);
+      return;
+    }
+    router.push(basePath);
+  }
+
   if (loading) return <p className="text-slate-500">Loading...</p>;
   if (!rma) return <p className="text-slate-500">RMA not found.</p>;
 
@@ -105,21 +153,58 @@ export default function RmaDetailView({ basePath, canEdit }) {
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-3 text-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs text-slate-500">Customer</p>
-            <p className="font-medium">{rma.customer_name}</p>
-            <p className="text-slate-500">{rma.customer_phone}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Product</p>
-            <p className="font-medium">
-              {rma.product_name} {rma.product_model && `(${rma.product_model})`}
-            </p>
-            {rma.serial_number && <p className="text-slate-500">SN: {rma.serial_number}</p>}
-          </div>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-slate-400 font-medium">Details</p>
+          {canEdit && !editingDetails && (
+            <button onClick={startEditDetails} className="flex items-center gap-1 text-xs text-blue-600 underline">
+              <Pencil size={12} /> Edit
+            </button>
+          )}
         </div>
-        {rma.issue_description && (
+
+        {editingDetails ? (
+          <div className="space-y-2">
+            <EditField label="Customer Name" value={detailsForm.customer_name} onChange={(v) => setDetailsForm({ ...detailsForm, customer_name: v })} />
+            <EditField label="Customer Phone" value={detailsForm.customer_phone} onChange={(v) => setDetailsForm({ ...detailsForm, customer_phone: v })} />
+            <EditField label="Product Name" value={detailsForm.product_name} onChange={(v) => setDetailsForm({ ...detailsForm, product_name: v })} />
+            <EditField label="Product Model" value={detailsForm.product_model} onChange={(v) => setDetailsForm({ ...detailsForm, product_model: v })} />
+            <EditField label="Serial Number" value={detailsForm.serial_number} onChange={(v) => setDetailsForm({ ...detailsForm, serial_number: v })} />
+            <div>
+              <label className="text-xs text-slate-500">Issue Description</label>
+              <textarea
+                rows={2}
+                className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
+                value={detailsForm.issue_description}
+                onChange={(e) => setDetailsForm({ ...detailsForm, issue_description: e.target.value })}
+              />
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex gap-2 pt-1">
+              <button disabled={busy} onClick={saveDetails} className="flex-1 bg-slate-900 text-white rounded-lg py-2.5 text-sm font-medium disabled:opacity-50">
+                Save
+              </button>
+              <button onClick={() => setEditingDetails(false)} className="flex-1 border border-slate-200 rounded-lg py-2.5 text-sm">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-slate-500">Customer</p>
+              <p className="font-medium">{rma.customer_name}</p>
+              <p className="text-slate-500">{rma.customer_phone}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Product</p>
+              <p className="font-medium">
+                {rma.product_name} {rma.product_model && `(${rma.product_model})`}
+              </p>
+              {rma.serial_number && <p className="text-slate-500">SN: {rma.serial_number}</p>}
+            </div>
+          </div>
+        )}
+        {!editingDetails && rma.issue_description && (
           <div>
             <p className="text-xs text-slate-500">Issue</p>
             <p>{rma.issue_description}</p>
@@ -463,6 +548,21 @@ export default function RmaDetailView({ basePath, canEdit }) {
         </div>
       )}
 
+      {canEdit && canDelete && (
+        <div className="bg-white rounded-xl border border-red-100 shadow-sm p-4 sm:p-6">
+          <button
+            disabled={busy}
+            onClick={deleteRma}
+            className="w-full border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm font-medium disabled:opacity-50"
+          >
+            Delete RMA
+          </button>
+          <p className="text-xs text-slate-400 mt-2 text-center">
+            Removes it from the list - its full history is kept permanently, including who deleted it.
+          </p>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
         <h2 className="font-semibold text-sm mb-3">Activity Timeline</h2>
         <div className="space-y-3">
@@ -484,6 +584,20 @@ export default function RmaDetailView({ basePath, canEdit }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function EditField({ label, value, onChange }) {
+  return (
+    <div>
+      <label className="text-xs text-slate-500">{label}</label>
+      <input
+        type="text"
+        className="w-full border rounded-lg px-3 py-2 mt-0.5 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }

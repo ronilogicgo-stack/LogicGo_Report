@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabaseClient";
 
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
-const RmaAccessContext = createContext({ isAdmin: false, canEdit: false, canManage: false });
+const RmaAccessContext = createContext({ isAdmin: false, canEdit: false, canManage: false, canDelete: false });
 export function useRmaAccess() {
   return useContext(RmaAccessContext);
 }
@@ -21,6 +21,7 @@ export default function RmaLayout({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [canManage, setCanManage] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -35,7 +36,7 @@ export default function RmaLayout({ children }) {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, is_admin, status")
+        .select("full_name, is_admin, is_sales_person, is_accounts, status")
         .eq("id", session.user.id)
         .single();
 
@@ -46,6 +47,7 @@ export default function RmaLayout({ children }) {
 
       const admin = !!profile.is_admin;
       const owner = session.user.email === OWNER_EMAIL;
+      const deleteAllowed = owner || admin || !!profile.is_sales_person || !!profile.is_accounts;
       let editAllowed = owner;
       let manageAllowed = owner;
 
@@ -76,6 +78,7 @@ export default function RmaLayout({ children }) {
       setIsAdmin(admin);
       setCanEdit(editAllowed);
       setCanManage(manageAllowed);
+      setCanDelete(deleteAllowed);
       setChecked(true);
     }
     check();
@@ -95,7 +98,7 @@ export default function RmaLayout({ children }) {
   }
 
   return (
-    <RmaAccessContext.Provider value={{ isAdmin, canEdit, canManage }}>
+    <RmaAccessContext.Provider value={{ isAdmin, canEdit, canManage, canDelete }}>
       <div className="min-h-screen bg-slate-50">
         <nav className="bg-gradient-to-r from-rose-600 to-orange-600 shadow-md px-4 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4">
