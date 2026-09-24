@@ -44,6 +44,14 @@ export default function Home() {
         router.replace("/dashboard");
       } else if (profile.is_accounts && profile.status === "approved") {
         router.replace("/payment-followup");
+      } else if (profile.status === "approved") {
+        const { data: rmaGrant } = await supabase
+          .from("module_access")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .eq("module_key", "rma")
+          .maybeSingle();
+        router.replace(rmaGrant ? "/rma" : "/signup?pending=1");
       } else {
         router.replace("/signup?pending=1");
       }

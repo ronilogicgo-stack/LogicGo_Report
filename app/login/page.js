@@ -94,6 +94,21 @@ function LoginForm() {
     } else if (profile.is_accounts && profile.status === "paused") {
       await supabase.auth.signOut();
       setError("Your account has been paused by the admin. Please contact your admin.");
+    } else if (profile.status === "approved") {
+      // No base role (Sales Person/Admin/Accounts) - check for a
+      // standalone RMA grant before treating this as unapproved.
+      const { data: rmaGrant } = await supabase
+        .from("module_access")
+        .select("id")
+        .eq("user_id", data.user.id)
+        .eq("module_key", "rma")
+        .maybeSingle();
+      if (rmaGrant) {
+        router.push("/rma");
+      } else {
+        await supabase.auth.signOut();
+        setError("Your access request was rejected. Contact admin.");
+      }
     } else if (profile.status === "pending") {
       await supabase.auth.signOut();
       setError("Your request is still pending admin approval.");

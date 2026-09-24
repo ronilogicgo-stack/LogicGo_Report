@@ -57,20 +57,40 @@ export default function TeamManagementPage() {
     setPendingRoles((prev) => {
       const next = { ...prev };
       for (const p of pendingData || []) {
-        if (!(p.id in next)) next[p.id] = { is_sales_person: true, is_admin: false, is_accounts: false };
+        if (!(p.id in next)) next[p.id] = { is_sales_person: true, is_admin: false, is_accounts: false, rma: false };
       }
       return next;
     });
 
-    const { data: teamData } = await supabase
-      .from("profiles")
-      .select("*")
-      .in("status", ["approved", "paused"])
-      .or("is_sales_person.eq.true,is_admin.eq.true,is_accounts.eq.true")
-      .order("full_name");
+    const [{ data: teamData }, { data: rmaOnlyIds }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("*")
+        .in("status", ["approved", "paused"])
+        .or("is_sales_person.eq.true,is_admin.eq.true,is_accounts.eq.true")
+        .order("full_name"),
+      supabase.from("module_access").select("user_id").eq("module_key", "rma"),
+    ]);
 
-    if (teamData && teamData.length > 0) {
-      const salesIds = teamData.filter((p) => p.is_sales_person).map((p) => p.id);
+    // A person whose ONLY access is an RMA grant (no Sales Person/Admin/
+    // Accounts role) still needs to show up here to manage that grant.
+    const alreadyListedIds = new Set((teamData || []).map((p) => p.id));
+    const extraIds = (rmaOnlyIds || []).map((r) => r.user_id).filter((id) => !alreadyListedIds.has(id));
+    let extraProfiles = [];
+    if (extraIds.length > 0) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("id", extraIds)
+        .in("status", ["approved", "paused"]);
+      extraProfiles = data || [];
+    }
+    const mergedTeam = [...(teamData || []), ...extraProfiles].sort((a, b) =>
+      (a.full_name || "").localeCompare(b.full_name || "")
+    );
+
+    if (mergedTeam.length > 0) {
+      const salesIds = mergedTeam.filter((p) => p.is_sales_person).map((p) => p.id);
       let lastReport = {};
       if (salesIds.length > 0) {
         // Uses the last_report_per_user database view, which computes
@@ -86,7 +106,7 @@ export default function TeamManagementPage() {
           lastReport[r.user_id] = r.last_report;
         }
       }
-      setTeam(teamData.map((p) => ({ ...p, last_report: lastReport[p.id] || null })));
+      setTeam(mergedTeam.map((p) => ({ ...p, last_report: lastReport[p.id] || null })));
     } else {
       setTeam([]);
     }
@@ -99,7 +119,7 @@ export default function TeamManagementPage() {
   }, [load]);
 
   async function approve(person) {
-    const roles = pendingRoles[person.id] || { is_sales_person: true, is_admin: false, is_accounts: false };
+    const roles = pendingRoles[person.id] || { is_sales_person: true, is_admin: false, is_accounts: false, rma: false };
     setBusyId(person.id);
     const { error } = await supabase
       .from("profiles")
@@ -110,6 +130,11 @@ export default function TeamManagementPage() {
         status: "approved",
       })
       .eq("id", person.id);
+    if (!error && roles.rma) {
+      await supabase
+        .from("module_access")
+        .upsert({ user_id: person.id, module_key: "rma", access_level: "editor" }, { onConflict: "user_id,module_key" });
+    }
     setBusyId(null);
     if (error) alert(`Could not approve: ${error.message}`);
     load();
@@ -248,6 +273,7 @@ export default function TeamManagementPage() {
       is_sales_person: person.is_sales_person,
       is_admin: person.is_admin,
       is_accounts: person.is_accounts,
+      rma: (moduleAccessMap[person.id] || []).some((t) => t.module_key === "rma"),
     });
   }
 
@@ -267,6 +293,14 @@ export default function TeamManagementPage() {
     if (error) {
       alert(`Could not save: ${error.message}`);
       return;
+    }
+
+    if (editForm.rma) {
+      await supabase
+        .from("module_access")
+        .upsert({ user_id: id, module_key: "rma", access_level: "editor" }, { onConflict: "user_id,module_key" });
+    } else {
+      await supabase.from("module_access").delete().eq("user_id", id).eq("module_key", "rma");
     }
 
     setEditingId(null);
@@ -357,6 +391,22 @@ export default function TeamManagementPage() {
                         }
                       />
                       Accounts
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={pendingRoles[p.id]?.rma ?? false}
+                        onChange={(e) =>
+                          setPendingRoles({
+                            ...pendingRoles,
+                            [p.id]: {
+                              ...pendingRoles[p.id],
+                              rma: e.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      RMA
                     </label>
                   </div>
                 </div>
@@ -498,6 +548,14 @@ export default function TeamManagementPage() {
                         />
                         Accounts
                       </label>
+                      <label className="flex items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={editForm.rma}
+                          onChange={(e) => setEditForm({ ...editForm, rma: e.target.checked })}
+                        />
+                        RMA
+                      </label>
                     </div>
                     <div className="flex gap-2 pt-1">
                       <button
@@ -535,6 +593,9 @@ export default function TeamManagementPage() {
                           {p.is_sales_person && <RoleBadge label="Sales Person" />}
                           {p.is_admin && <RoleBadge label="Admin" color="indigo" />}
                           {p.is_accounts && <RoleBadge label="Accounts" color="teal" />}
+                          {isOwner && (moduleAccessMap[p.id] || []).some((t) => t.module_key === "rma") && (
+                            <RoleBadge label="RMA" color="teal" />
+                          )}
                           {isOwner &&
                             (moduleAccessMap[p.id] || []).map((t) => (
                               <RoleBadge
