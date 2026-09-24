@@ -89,6 +89,21 @@ export default function RmaDetailView({ basePath, canEdit }) {
         </Link>
       </div>
 
+      {rma.tracking_code && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-indigo-500">Give this code to the customer to track online (no login needed)</p>
+            <p className="font-mono font-semibold tracking-widest text-indigo-800">{rma.tracking_code}</p>
+          </div>
+          <button
+            onClick={() => navigator.clipboard?.writeText(rma.tracking_code)}
+            className="text-xs bg-white border border-indigo-200 text-indigo-600 rounded-lg px-3 py-1.5 whitespace-nowrap"
+          >
+            Copy
+          </button>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-3 text-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>

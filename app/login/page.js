@@ -178,6 +178,12 @@ function LoginForm() {
             Request access
           </Link>
         </p>
+        <p className="text-sm text-center text-gray-500">
+          Have a repair with us?{" "}
+          <Link href="/track" className="text-indigo-600 font-medium underline">
+            Track Your RMA
+          </Link>
+        </p>
       </form>
     </div>
   );
