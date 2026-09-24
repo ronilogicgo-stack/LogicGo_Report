@@ -5,6 +5,10 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
 import { RMA_STATUSES, STATUS_COLORS, ACTION_LABELS, formatDateTime } from "@/lib/rma";
+import {
+  ShieldCheck, RefreshCw, MessageSquare, CalendarClock, Stethoscope,
+  Wrench, CheckCircle2, Truck, PackageCheck, ChevronDown,
+} from "lucide-react";
 
 export default function RmaDetailView({ basePath, canEdit }) {
   const supabase = createClient();
@@ -15,6 +19,7 @@ export default function RmaDetailView({ basePath, canEdit }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [openAction, setOpenAction] = useState(null);
 
   // Small per-action form state
   const [remarkText, setRemarkText] = useState("");
@@ -154,7 +159,7 @@ export default function RmaDetailView({ basePath, canEdit }) {
       </div>
 
       {canEdit && rma.status !== "Closed" && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-3">
           <h2 className="font-semibold text-sm">Actions</h2>
           {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -162,16 +167,25 @@ export default function RmaDetailView({ basePath, canEdit }) {
             <button
               disabled={busy}
               onClick={() => callAction("rma_take_control", { p_rma_id: id })}
-              className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white rounded-xl px-4 py-3.5 text-base font-medium disabled:opacity-50"
             >
-              Take Control
+              <ShieldCheck size={20} /> Take Control
             </button>
           )}
 
-          <div className="border-t pt-3">
-            <p className="text-xs text-slate-500 mb-1">Change Status</p>
-            <div className="flex flex-wrap gap-2">
-              <select value={statusChoice} onChange={(e) => setStatusChoice(e.target.value)} className="border rounded-lg px-2 py-1.5 text-sm">
+          <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+            <AccordionItem
+              icon={RefreshCw}
+              title="Change Status"
+              subtitle={rma.status}
+              open={openAction === "status"}
+              onToggle={() => setOpenAction(openAction === "status" ? null : "status")}
+            >
+              <select
+                value={statusChoice}
+                onChange={(e) => setStatusChoice(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
+              >
                 {RMA_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
@@ -183,118 +197,149 @@ export default function RmaDetailView({ basePath, canEdit }) {
                 placeholder="Remark (optional)"
                 value={statusRemark}
                 onChange={(e) => setStatusRemark(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1 min-w-[140px]"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
-              <button
-                disabled={busy}
+              <ActionButton
+                busy={busy}
                 onClick={() =>
                   callAction("rma_change_status", { p_rma_id: id, p_new_status: statusChoice, p_remark: statusRemark || null }, [
                     () => setStatusRemark(""),
+                    () => setOpenAction(null),
                   ])
                 }
-                className="bg-slate-900 text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
               >
                 Update
-              </button>
-            </div>
-          </div>
+              </ActionButton>
+            </AccordionItem>
 
-          <div className="border-t pt-3">
-            <p className="text-xs text-slate-500 mb-1">Add Remark</p>
-            <div className="flex gap-2">
+            <AccordionItem
+              icon={MessageSquare}
+              title="Add Remark"
+              open={openAction === "remark"}
+              onToggle={() => setOpenAction(openAction === "remark" ? null : "remark")}
+            >
               <input
                 type="text"
                 value={remarkText}
                 onChange={(e) => setRemarkText(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
                 placeholder="e.g. Power IC damaged. Replacement part required."
               />
-              <button
-                disabled={busy || !remarkText.trim()}
-                onClick={() => callAction("rma_add_remark", { p_rma_id: id, p_remark: remarkText }, [() => setRemarkText("")])}
-                className="bg-slate-900 text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
+              <ActionButton
+                busy={busy}
+                disabled={!remarkText.trim()}
+                onClick={() =>
+                  callAction("rma_add_remark", { p_rma_id: id, p_remark: remarkText }, [
+                    () => setRemarkText(""),
+                    () => setOpenAction(null),
+                  ])
+                }
               >
                 Add
-              </button>
-            </div>
-          </div>
+              </ActionButton>
+            </AccordionItem>
 
-          <div className="border-t pt-3">
-            <p className="text-xs text-slate-500 mb-1">Estimated Delivery</p>
-            <div className="flex flex-wrap gap-2">
+            <AccordionItem
+              icon={CalendarClock}
+              title="Estimated Delivery"
+              subtitle={rma.estimated_delivery ? formatDateTime(rma.estimated_delivery) : null}
+              open={openAction === "delivery"}
+              onToggle={() => setOpenAction(openAction === "delivery" ? null : "delivery")}
+            >
               <input
                 type="datetime-local"
                 value={estDate}
                 onChange={(e) => setEstDate(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
               <input
                 type="text"
                 placeholder="Reason (optional)"
                 value={estReason}
                 onChange={(e) => setEstReason(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1 min-w-[140px]"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
-              <button
-                disabled={busy || !estDate}
+              <ActionButton
+                busy={busy}
+                disabled={!estDate}
                 onClick={() =>
                   callAction(
                     "rma_update_estimated_delivery",
                     { p_rma_id: id, p_new_date: new Date(estDate).toISOString(), p_reason: estReason || null },
-                    [() => setEstDate(""), () => setEstReason("")]
+                    [() => setEstDate(""), () => setEstReason(""), () => setOpenAction(null)]
                   )
                 }
-                className="bg-slate-900 text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
               >
                 Update
-              </button>
-            </div>
-          </div>
+              </ActionButton>
+            </AccordionItem>
 
-          <div className="border-t pt-3">
-            <p className="text-xs text-slate-500 mb-1">Diagnosis</p>
-            <div className="flex gap-2">
+            <AccordionItem
+              icon={Stethoscope}
+              title="Diagnosis"
+              subtitle={rma.diagnosis}
+              open={openAction === "diagnosis"}
+              onToggle={() => setOpenAction(openAction === "diagnosis" ? null : "diagnosis")}
+            >
               <input
                 type="text"
                 value={diagnosisText}
                 onChange={(e) => setDiagnosisText(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
-              <button
-                disabled={busy || !diagnosisText.trim()}
+              <ActionButton
+                busy={busy}
+                disabled={!diagnosisText.trim()}
                 onClick={() =>
-                  callAction("rma_add_diagnosis", { p_rma_id: id, p_diagnosis: diagnosisText }, [() => setDiagnosisText("")])
+                  callAction("rma_add_diagnosis", { p_rma_id: id, p_diagnosis: diagnosisText }, [
+                    () => setDiagnosisText(""),
+                    () => setOpenAction(null),
+                  ])
                 }
-                className="bg-slate-900 text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
               >
                 Save
-              </button>
-            </div>
-          </div>
+              </ActionButton>
+            </AccordionItem>
 
-          <div className="border-t pt-3">
-            <p className="text-xs text-slate-500 mb-1">Repair Action</p>
-            <div className="flex gap-2">
+            <AccordionItem
+              icon={Wrench}
+              title="Repair Action"
+              subtitle={rma.repair_action}
+              open={openAction === "repair"}
+              onToggle={() => setOpenAction(openAction === "repair" ? null : "repair")}
+            >
               <input
                 type="text"
                 value={repairText}
                 onChange={(e) => setRepairText(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
-              <button
-                disabled={busy || !repairText.trim()}
-                onClick={() => callAction("rma_add_repair", { p_rma_id: id, p_repair: repairText }, [() => setRepairText("")])}
-                className="bg-slate-900 text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
+              <ActionButton
+                busy={busy}
+                disabled={!repairText.trim()}
+                onClick={() =>
+                  callAction("rma_add_repair", { p_rma_id: id, p_repair: repairText }, [
+                    () => setRepairText(""),
+                    () => setOpenAction(null),
+                  ])
+                }
               >
                 Save
-              </button>
-            </div>
-          </div>
+              </ActionButton>
+            </AccordionItem>
 
-          <div className="border-t pt-3">
-            <p className="text-xs text-slate-500 mb-1">QC</p>
-            <div className="flex flex-wrap gap-2">
-              <select value={qcResult} onChange={(e) => setQcResult(e.target.value)} className="border rounded-lg px-2 py-1.5 text-sm">
+            <AccordionItem
+              icon={CheckCircle2}
+              title="QC"
+              subtitle={rma.qc_result}
+              open={openAction === "qc"}
+              onToggle={() => setOpenAction(openAction === "qc" ? null : "qc")}
+            >
+              <select
+                value={qcResult}
+                onChange={(e) => setQcResult(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
+              >
                 <option value="Passed">Passed</option>
                 <option value="Failed">Failed</option>
               </select>
@@ -303,97 +348,103 @@ export default function RmaDetailView({ basePath, canEdit }) {
                 placeholder="Remarks (optional)"
                 value={qcRemarks}
                 onChange={(e) => setQcRemarks(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1 min-w-[140px]"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
-              <button
-                disabled={busy}
+              <ActionButton
+                busy={busy}
                 onClick={() =>
                   callAction("rma_qc_complete", { p_rma_id: id, p_result: qcResult, p_remarks: qcRemarks || null }, [
                     () => setQcRemarks(""),
+                    () => setOpenAction(null),
                   ])
                 }
-                className="bg-slate-900 text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
               >
                 Save
-              </button>
-            </div>
-          </div>
+              </ActionButton>
+            </AccordionItem>
 
-          <div className="border-t pt-3">
-            <p className="text-xs text-slate-500 mb-1">Courier</p>
-            <div className="flex flex-wrap gap-2">
+            <AccordionItem
+              icon={Truck}
+              title="Courier"
+              subtitle={rma.courier_company}
+              open={openAction === "courier"}
+              onToggle={() => setOpenAction(openAction === "courier" ? null : "courier")}
+            >
               <input
                 type="text"
                 placeholder="Courier Company"
                 value={courierCompany}
                 onChange={(e) => setCourierCompany(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1 min-w-[120px]"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
               <input
                 type="text"
                 placeholder="Tracking Number"
                 value={courierTracking}
                 onChange={(e) => setCourierTracking(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1 min-w-[120px]"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
-              <button
-                disabled={busy || !courierCompany.trim()}
+              <ActionButton
+                busy={busy}
+                disabled={!courierCompany.trim()}
                 onClick={() =>
                   callAction("rma_courier_update", { p_rma_id: id, p_company: courierCompany, p_tracking: courierTracking }, [
                     () => setCourierCompany(""),
                     () => setCourierTracking(""),
+                    () => setOpenAction(null),
                   ])
                 }
-                className="bg-slate-900 text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
               >
                 Save
-              </button>
-            </div>
-          </div>
+              </ActionButton>
+            </AccordionItem>
 
-          <div className="border-t pt-3">
-            <p className="text-xs text-slate-500 mb-1">Customer Received</p>
-            <div className="flex flex-wrap gap-2">
+            <AccordionItem
+              icon={PackageCheck}
+              title="Customer Received"
+              subtitle={rma.receiver_name}
+              open={openAction === "received"}
+              onToggle={() => setOpenAction(openAction === "received" ? null : "received")}
+            >
               <input
                 type="text"
                 placeholder="Receiver Name"
                 value={receiverName}
                 onChange={(e) => setReceiverName(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1 min-w-[120px]"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
               <input
                 type="text"
                 placeholder="Delivery Method (e.g. Office Pickup)"
                 value={deliveryMethod}
                 onChange={(e) => setDeliveryMethod(e.target.value)}
-                className="border rounded-lg px-2 py-1.5 text-sm flex-1 min-w-[140px]"
+                className="w-full border rounded-lg px-3 py-2.5 text-sm"
               />
-              <button
-                disabled={busy || !receiverName.trim()}
+              <ActionButton
+                busy={busy}
+                disabled={!receiverName.trim()}
                 onClick={() =>
                   callAction("rma_customer_received", { p_rma_id: id, p_receiver: receiverName, p_method: deliveryMethod }, [
                     () => setReceiverName(""),
                     () => setDeliveryMethod(""),
+                    () => setOpenAction(null),
                   ])
                 }
-                className="bg-slate-900 text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
               >
                 Save
-              </button>
-            </div>
+              </ActionButton>
+            </AccordionItem>
           </div>
 
-          <div className="border-t pt-3">
-            <button
-              disabled={busy}
-              onClick={() => {
-                if (confirm("Close this RMA? This marks it fully complete.")) callAction("rma_close", { p_rma_id: id });
-              }}
-              className="bg-gray-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50"
-            >
-              Close RMA
-            </button>
-          </div>
+          <button
+            disabled={busy}
+            onClick={() => {
+              if (confirm("Close this RMA? This marks it fully complete.")) callAction("rma_close", { p_rma_id: id });
+            }}
+            className="w-full bg-gray-700 text-white rounded-xl px-4 py-3.5 text-base font-medium disabled:opacity-50"
+          >
+            Close RMA
+          </button>
         </div>
       )}
 
@@ -419,5 +470,39 @@ export default function RmaDetailView({ basePath, canEdit }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function AccordionItem({ icon: Icon, title, subtitle, open, onToggle, children }) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left"
+      >
+        <span className="flex items-center gap-3 min-w-0">
+          <Icon size={19} className="text-slate-400 shrink-0" />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-slate-700">{title}</span>
+            {subtitle && <span className="block text-xs text-slate-400 truncate">{subtitle}</span>}
+          </span>
+        </span>
+        <ChevronDown size={18} className={`text-slate-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="px-4 pb-4 space-y-2 bg-slate-50">{children}</div>}
+    </div>
+  );
+}
+
+function ActionButton({ busy, disabled, onClick, children }) {
+  return (
+    <button
+      disabled={busy || disabled}
+      onClick={onClick}
+      className="w-full bg-slate-900 text-white rounded-lg py-2.5 text-sm font-medium disabled:opacity-50"
+    >
+      {children}
+    </button>
   );
 }
