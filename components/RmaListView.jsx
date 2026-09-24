@@ -11,15 +11,17 @@ export default function RmaListView({ basePath, canEdit }) {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error: queryError } = await supabase
       .from("rma_records")
       .select("*")
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
     setRecords(data || []);
+    setError(queryError ? queryError.message : "");
     setLoading(false);
   }, [supabase]);
 
@@ -93,9 +95,13 @@ export default function RmaListView({ basePath, canEdit }) {
         ))}
       </div>
 
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</p>
+      )}
+
       {loading ? (
         <p className="text-slate-500">Loading...</p>
-      ) : filtered.length === 0 ? (
+      ) : error ? null : filtered.length === 0 ? (
         <p className="text-slate-500">No RMAs found.</p>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
