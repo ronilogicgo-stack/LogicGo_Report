@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabaseClient";
+import { usePushNotifications } from "@/lib/usePushNotifications";
 
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
@@ -22,6 +23,8 @@ export default function RmaLayout({ children }) {
   const [canEdit, setCanEdit] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
+  const [userId, setUserId] = useState(null);
+  usePushNotifications(userId);
 
   useEffect(() => {
     async function check() {
@@ -79,6 +82,7 @@ export default function RmaLayout({ children }) {
       setCanEdit(editAllowed);
       setCanManage(manageAllowed);
       setCanDelete(deleteAllowed);
+      setUserId(session.user.id);
       setChecked(true);
     }
     check();

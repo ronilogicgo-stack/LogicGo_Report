@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Home, User, Wallet, ShoppingBag, MoreHorizontal, Bell, X, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { usePushNotifications } from "@/lib/usePushNotifications";
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -21,6 +22,8 @@ export default function DashboardLayout({ children }) {
   const [logoUrl, setLogoUrl] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [userId, setUserId] = useState(null);
+  usePushNotifications(userId);
 
   useEffect(() => {
     async function check() {
@@ -58,6 +61,7 @@ export default function DashboardLayout({ children }) {
       setLogoUrl(settings?.logo_url || null);
 
       setName(profile.full_name);
+      setUserId(session.user.id);
       setAvatarUrl(profile.avatar_url || null);
       setAlsoAdmin(!!profile.is_admin);
 

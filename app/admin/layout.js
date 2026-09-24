@@ -8,6 +8,7 @@ import {
   ShoppingBag, FileBarChart, Wrench, Users, Settings, LogOut, ArrowRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { usePushNotifications } from "@/lib/usePushNotifications";
 
 const OWNER_EMAIL = "roni.logicgo@gmail.com";
 
@@ -23,6 +24,8 @@ export default function AdminLayout({ children }) {
   const [canSeeAnnualReport, setCanSeeAnnualReport] = useState(false);
   const [canSeeRma, setCanSeeRma] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userId, setUserId] = useState(null);
+  usePushNotifications(userId);
 
   useEffect(() => {
     async function check() {
@@ -54,6 +57,7 @@ export default function AdminLayout({ children }) {
       setLogoUrl(settings?.logo_url || null);
 
       setAlsoSalesPerson(!!profile.is_sales_person);
+      setUserId(session.user.id);
       setChecked(true);
 
       const isOwner = session.user.email === OWNER_EMAIL;
