@@ -60,10 +60,12 @@ export default function DailyEntryForm({ userId, editingEntry, onSaved, onCancel
         other_transaction: Number(form.other_transaction) || 0,
         remarks: form.remarks,
         // Saving real numbers always means this day is now properly
-        // reported - even if it started out as an auto Friday holiday,
-        // an Admin-marked Leave, or an empty "please fill this in"
-        // request row.
-        entry_type: "submitted",
+        // reported - even if it started out as an auto Friday holiday
+        // or an Admin-marked Leave. A day that was flagged "please fill
+        // this in" (an Admin's Request Entry) instead becomes its own
+        // status, so it stays visibly distinguishable as "entered after
+        // being notified" rather than looking like an on-time entry.
+        entry_type: editingEntry?.entry_type === "requested" ? "entered_after_notice" : "submitted",
       },
       { onConflict: "user_id,entry_date" }
     );

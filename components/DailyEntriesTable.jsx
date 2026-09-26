@@ -9,6 +9,7 @@ const TAG_STYLES = {
   leave: "bg-sky-100 text-sky-700",
   custom: "bg-violet-100 text-violet-700",
   requested: "bg-red-100 text-red-700",
+  entered_after_notice: "bg-orange-100 text-orange-700",
 };
 
 const TAG_LABELS = {
@@ -16,6 +17,7 @@ const TAG_LABELS = {
   leave: "Leave",
   custom: "Note",
   requested: "Needs Entry",
+  entered_after_notice: "Entry After Notifying",
 };
 
 function EntryTypeTag({ entryType }) {
